@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Layout from '@/components/Layout';
 import { Assignment, Category, Location, calculateEarnings, initialAssignments, initialCategories, initialLocations } from '@/lib/types';
-import { BarChart, PieChart } from '@/components/ui/chart';
+import { BarChart, PieChart } from '@/components/ui/charts';
 import { 
   TrendingUp, BarChart3, PieChart as PieChartIcon, Clock, CalendarClock, 
   DollarSign, Building, Tag
