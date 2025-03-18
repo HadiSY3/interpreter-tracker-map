@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Plus, Calendar, Search, Clock, MapPin, X, Filter, Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -23,12 +22,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AssignmentForm from '@/components/AssignmentForm';
 import LocationMap from '@/components/LocationMap';
-import { Assignment, initialAssignments, calculateEarnings, formatDate, formatTime, initialLocations } from '@/lib/types';
+import { Assignment, calculateEarnings, formatDate, formatTime } from '@/lib/types';
 import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
+import { useData } from '@/contexts/DataContext';
 
 const Assignments = () => {
-  const [assignments, setAssignments] = useState<Assignment[]>(initialAssignments);
+  const { assignments, setAssignments, locations } = useData();
   const [showForm, setShowForm] = useState(false);
   const [editAssignment, setEditAssignment] = useState<Assignment | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState('');
@@ -262,7 +262,7 @@ const Assignments = () => {
                 </CardHeader>
                 <CardContent>
                   <LocationMap 
-                    locations={initialLocations}
+                    locations={locations}
                     onLocationSelect={(location) => {
                       toast({
                         title: location.name,

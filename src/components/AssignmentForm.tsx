@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -40,8 +39,9 @@ import { cn } from '@/lib/utils';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Assignment, initialCategories, initialLocations, Category, Location } from '@/lib/types';
+import { Assignment, Category, Location } from '@/lib/types';
 import { toast } from '@/components/ui/use-toast';
+import { useData } from '@/contexts/DataContext';
 
 const formSchema = z.object({
   clientName: z.string().min(2, { message: 'Bitte geben Sie einen Klientennamen ein' }),
@@ -66,6 +66,8 @@ const AssignmentForm: React.FC<AssignmentFormProps> = ({
   onSubmit,
   onCancel
 }) => {
+  const { categories, locations } = useData();
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: initialData ? {
@@ -88,8 +90,8 @@ const AssignmentForm: React.FC<AssignmentFormProps> = ({
 
   const handleSubmit = (values: FormValues) => {
     // Convert form values to Assignment object
-    const selectedLocation = initialLocations.find(loc => loc.id === values.location);
-    const selectedCategory = initialCategories.find(cat => cat.id === values.category);
+    const selectedLocation = locations.find(loc => loc.id === values.location);
+    const selectedCategory = categories.find(cat => cat.id === values.category);
     
     if (!selectedLocation || !selectedCategory) {
       toast({
@@ -187,7 +189,7 @@ const AssignmentForm: React.FC<AssignmentFormProps> = ({
                         </div>
                       </FormControl>
                       <SelectContent>
-                        {initialLocations.map((location) => (
+                        {locations.map((location) => (
                           <SelectItem key={location.id} value={location.id}>
                             {location.name}
                           </SelectItem>
@@ -218,7 +220,7 @@ const AssignmentForm: React.FC<AssignmentFormProps> = ({
                         </div>
                       </FormControl>
                       <SelectContent>
-                        {initialCategories.map((category) => (
+                        {categories.map((category) => (
                           <SelectItem key={category.id} value={category.id}>
                             {category.name} (€{category.hourlyRate}/h)
                           </SelectItem>

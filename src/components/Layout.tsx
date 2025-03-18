@@ -1,122 +1,167 @@
 
-import React, { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Calendar, 
-  BarChart3, 
-  Tags, 
-  Menu, 
-  X
-} from 'lucide-react';
+import React, { ReactNode, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { Button } from '@/components/ui/button';
+import {
+  LayoutDashboard,
+  Calendar,
+  Tag,
+  BarChart4,
+  Menu,
+  X,
+  LogOut,
+  MapPin
+} from 'lucide-react';
+import { useMobile } from '@/hooks/use-mobile';
 
 interface LayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
-  const isMobile = useIsMobile();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const isMobile = useMobile();
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-  const navigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Einsätze', href: '/assignments', icon: Calendar },
-    { name: 'Statistiken', href: '/statistics', icon: BarChart3 },
-    { name: 'Kategorien', href: '/categories', icon: Tags },
+  const navItems = [
+    {
+      title: 'Dashboard',
+      href: '/',
+      icon: <LayoutDashboard className="h-5 w-5" />,
+    },
+    {
+      title: 'Einsätze',
+      href: '/assignments',
+      icon: <Calendar className="h-5 w-5" />,
+    },
+    {
+      title: 'Orte',
+      href: '/locations',
+      icon: <MapPin className="h-5 w-5" />,
+    },
+    {
+      title: 'Kategorien',
+      href: '/categories',
+      icon: <Tag className="h-5 w-5" />,
+    },
+    {
+      title: 'Statistiken',
+      href: '/statistics',
+      icon: <BarChart4 className="h-5 w-5" />,
+    },
   ];
 
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+  const toggleMobileMenu = () => {
+    setShowMobileMenu(!showMobileMenu);
+  };
+
+  const closeMobileMenu = () => {
+    if (showMobileMenu) setShowMobileMenu(false);
+  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Mobile header with menu button */}
-      {isMobile && (
-        <header className="flex items-center justify-between p-4 bg-white border-b border-border/50 fixed top-0 left-0 right-0 z-50">
-          <div className="flex items-center">
-            <button 
-              onClick={toggleSidebar}
-              className="p-2 rounded-full hover:bg-secondary transition-colors"
-              aria-label="Toggle menu"
-            >
-              <Menu size={20} />
-            </button>
-            <h1 className="ml-3 font-semibold text-lg">DolmetscherManager</h1>
-          </div>
-        </header>
-      )}
-
-      <div className="flex flex-1 mt-16 md:mt-0">
-        {/* Sidebar - desktop always visible, mobile conditional */}
-        <aside 
-          className={cn(
-            "fixed inset-y-0 z-50 flex flex-col bg-white border-r border-border/50 transition-transform duration-300 ease-in-out",
-            isMobile ? (isSidebarOpen ? "translate-x-0" : "-translate-x-full") : "translate-x-0 w-64"
-          )}
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Mobile Header */}
+      <header className="lg:hidden border-b bg-white p-4 flex items-center justify-between">
+        <Link 
+          to="/" 
+          className="font-bold text-lg text-primary flex items-center"
+          onClick={closeMobileMenu}
         >
-          {/* Sidebar header */}
-          <div className="h-16 flex items-center px-6 border-b border-border/50">
-            {isMobile && (
-              <button 
-                onClick={toggleSidebar}
-                className="absolute right-3 top-3 p-2 rounded-full hover:bg-secondary transition-colors"
-                aria-label="Close menu"
-              >
-                <X size={18} />
-              </button>
-            )}
-            <h1 className="font-semibold text-lg">DolmetscherManager</h1>
+          DolmetcherApp
+        </Link>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={toggleMobileMenu}
+          className="lg:hidden"
+        >
+          {showMobileMenu ? (
+            <X className="h-6 w-6" />
+          ) : (
+            <Menu className="h-6 w-6" />
+          )}
+        </Button>
+      </header>
+
+      <div className="flex flex-1">
+        {/* Sidebar (Desktop) */}
+        <aside className="hidden lg:flex flex-col w-64 bg-white border-r p-4">
+          <div className="flex items-center h-12 mb-8">
+            <Link to="/" className="font-bold text-xl text-primary">
+              DolmetcherApp
+            </Link>
           </div>
-
-          {/* Navigation links */}
-          <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-            {navigation.map((item) => {
-              const isActive = location.pathname === item.href;
-              
-              return (
-                <NavLink
-                  key={item.name}
-                  to={item.href}
-                  onClick={() => isMobile && setIsSidebarOpen(false)}
-                  className={({ isActive }) => cn(
-                    'flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group',
-                    isActive 
-                      ? 'bg-primary text-white shadow-md' 
-                      : 'text-foreground hover:bg-secondary'
-                  )}
-                >
-                  <item.icon size={18} className={cn(
-                    "mr-2 transition-transform duration-300 group-hover:scale-110",
-                    isActive ? 'text-white' : 'text-muted-foreground'
-                  )} />
-                  <span>{item.name}</span>
-                </NavLink>
-              );
-            })}
+          <nav className="space-y-1 flex-1">
+            {navItems.map(({ title, href, icon }) => (
+              <Link 
+                key={href} 
+                to={href}
+                className={cn(
+                  "flex items-center h-12 px-4 rounded-md text-sm font-medium",
+                  "hover:bg-secondary/80 transition-colors",
+                  location.pathname === href 
+                    ? "bg-secondary text-primary" 
+                    : "text-gray-600"
+                )}
+              >
+                <span className="mr-3">{icon}</span>
+                {title}
+              </Link>
+            ))}
           </nav>
-
-          {/* Footer */}
-          <div className="p-4 border-t border-border/50 text-xs text-muted-foreground">
-            <p>&copy; {new Date().getFullYear()} DolmetscherManager</p>
+          <div className="pt-4 border-t mt-8">
+            <Button variant="ghost" className="w-full justify-start text-red-500">
+              <LogOut className="mr-3 h-5 w-5" />
+              Abmelden
+            </Button>
           </div>
         </aside>
 
-        {/* Mobile overlay */}
-        {isMobile && isSidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm transition-opacity duration-300"
-            onClick={() => setIsSidebarOpen(false)}
-            aria-hidden="true"
-          />
+        {/* Mobile Menu */}
+        {isMobile && showMobileMenu && (
+          <div className="fixed inset-0 z-50 bg-white">
+            <div className="flex flex-col h-full">
+              <div className="flex items-center justify-between p-4 border-b">
+                <span className="font-bold text-lg text-primary">DolmetcherApp</span>
+                <Button variant="ghost" size="icon" onClick={toggleMobileMenu}>
+                  <X className="h-6 w-6" />
+                </Button>
+              </div>
+              <nav className="flex-1 overflow-auto p-4 pt-2">
+                <div className="space-y-1">
+                  {navItems.map(({ title, href, icon }) => (
+                    <Link
+                      key={href}
+                      to={href}
+                      className={cn(
+                        "flex items-center h-12 px-4 rounded-md text-sm font-medium",
+                        "transition-colors",
+                        location.pathname === href
+                          ? "bg-secondary text-primary"
+                          : "text-gray-600 hover:bg-gray-100"
+                      )}
+                      onClick={closeMobileMenu}
+                    >
+                      <span className="mr-3">{icon}</span>
+                      {title}
+                    </Link>
+                  ))}
+                </div>
+              </nav>
+              <div className="p-4 border-t">
+                <Button variant="ghost" className="w-full justify-start text-red-500">
+                  <LogOut className="mr-3 h-5 w-5" />
+                  Abmelden
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* Main content */}
-        <main className={cn(
-          "flex-1 transition-all duration-300 p-6",
-          isMobile ? "ml-0" : "ml-64"
-        )}>
+        {/* Main Content */}
+        <main className="flex-1 overflow-auto p-6">
           <div className="max-w-7xl mx-auto">
             {children}
           </div>

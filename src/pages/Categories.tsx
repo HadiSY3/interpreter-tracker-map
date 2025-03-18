@@ -1,12 +1,13 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import Layout from '@/components/Layout';
 import CategoryManager from '@/components/CategoryManager';
-import { Category, initialCategories } from '@/lib/types';
+import { Category } from '@/lib/types';
 import { toast } from '@/components/ui/use-toast';
+import { useData } from '@/contexts/DataContext';
 
 const Categories = () => {
-  const [categories, setCategories] = useState<Category[]>(initialCategories);
+  const { categories, setCategories } = useData();
 
   const handleAddCategory = (category: Category) => {
     setCategories([...categories, category]);
