@@ -5,30 +5,58 @@ import {
   MapPin, Clock, CalendarDays, DollarSign, TrendingUp, Users 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Assignment, calculateEarnings, calculateDuration, initialAssignments, initialLocations } from '@/lib/types';
+import { Assignment, calculateEarnings, calculateDuration, Interpreter } from '@/lib/types';
+import { useData } from '@/contexts/DataContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface DashboardProps {
-  assignments?: Assignment[];
+  className?: string;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ 
-  assignments = initialAssignments
-}) => {
+const Dashboard: React.FC<DashboardProps> = ({ className }) => {
+  const { assignments, locations, interpreters } = useData();
+  const [selectedInterpreter, setSelectedInterpreter] = React.useState<string>("all");
+  
+  // Filter assignments based on selected interpreter
+  const filteredAssignments = React.useMemo(() => {
+    if (selectedInterpreter === "all") {
+      return assignments;
+    }
+    return assignments.filter(a => 
+      a.interpreter && a.interpreter.id === selectedInterpreter
+    );
+  }, [assignments, selectedInterpreter]);
+
   // Calculate total earnings
-  const totalEarnings = assignments.reduce(
+  const totalEarnings = filteredAssignments.reduce(
     (sum, assignment) => sum + calculateEarnings(assignment), 
     0
   );
 
   // Calculate total hours worked
-  const totalMinutes = assignments.reduce(
+  const totalMinutes = filteredAssignments.reduce(
     (sum, assignment) => sum + calculateDuration(assignment), 
     0
   );
   const totalHours = (totalMinutes / 60).toFixed(1);
 
-  // Get most visited location
-  const mostVisitedLocation = [...initialLocations].sort((a, b) => b.visitCount - a.visitCount)[0];
+  // Get most visited location for filtered assignments
+  const locationCounts = filteredAssignments.reduce((counts: Record<string, number>, assignment) => {
+    const locationId = assignment.location.id;
+    counts[locationId] = (counts[locationId] || 0) + 1;
+    return counts;
+  }, {});
+
+  // Find the location with the most visits
+  let mostVisitedLocation = locations[0];
+  let maxVisits = 0;
+  
+  Object.entries(locationCounts).forEach(([locationId, count]) => {
+    if (count > maxVisits) {
+      maxVisits = count;
+      mostVisitedLocation = locations.find(loc => loc.id === locationId) || locations[0];
+    }
+  });
 
   const stats = [
     {
@@ -45,7 +73,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     },
     {
       title: 'Einsätze',
-      value: assignments.length.toString(),
+      value: filteredAssignments.length.toString(),
       icon: CalendarDays,
       color: 'bg-purple-500/10 text-purple-600',
     },
@@ -54,12 +82,33 @@ const Dashboard: React.FC<DashboardProps> = ({
       value: mostVisitedLocation?.name.split(' ')[0] || '-',
       icon: MapPin,
       color: 'bg-red-500/10 text-red-600',
-      description: `${mostVisitedLocation?.visitCount || 0} Besuche`,
+      description: `${maxVisits || 0} Besuche`,
     },
   ];
 
   return (
-    <div className="space-y-6 animate-fade-up">
+    <div className={cn("space-y-6 animate-fade-up", className)}>
+      <div className="flex justify-end mb-4">
+        <div className="w-full sm:w-[250px]">
+          <Select 
+            value={selectedInterpreter} 
+            onValueChange={setSelectedInterpreter}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Alle Dolmetscher" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Dolmetscher</SelectItem>
+              {interpreters.map(interpreter => (
+                <SelectItem key={interpreter.id} value={interpreter.id}>
+                  {interpreter.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, index) => (
           <Card key={index} className="border border-border/50 shadow-sm hover:shadow-md transition-all duration-300">
@@ -93,7 +142,10 @@ const Dashboard: React.FC<DashboardProps> = ({
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {assignments.slice(0, 3).map((assignment, index) => (
+              {filteredAssignments
+                .sort((a, b) => b.startTime.getTime() - a.startTime.getTime())
+                .slice(0, 3)
+                .map((assignment, index) => (
                 <div 
                   key={index}
                   className="flex items-center p-3 rounded-lg border border-border/50 bg-white hover:bg-secondary/50 transition-colors"
@@ -104,7 +156,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{assignment.clientName}</p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {assignment.location.name} • {new Date(assignment.startTime).toLocaleDateString('de-DE')}
+                      {assignment.location.name} • {assignment.startTime.toLocaleDateString('de-DE')}
                     </p>
                   </div>
                   <div className="text-right">
@@ -115,6 +167,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                   </div>
                 </div>
               ))}
+              
+              {filteredAssignments.length === 0 && (
+                <div className="p-4 text-center text-muted-foreground">
+                  Keine Einsätze gefunden.
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -128,23 +186,37 @@ const Dashboard: React.FC<DashboardProps> = ({
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {initialLocations
-                .sort((a, b) => b.visitCount - a.visitCount)
+              {Object.entries(locationCounts)
+                .sort(([, a], [, b]) => b - a)
                 .slice(0, 5)
-                .map((location, index) => (
-                  <div key={index} className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm truncate max-w-[70%]">{location.name}</p>
-                      <span className="text-sm font-medium">{location.visitCount}</span>
+                .map(([locationId, count], index) => {
+                  const location = locations.find(loc => loc.id === locationId);
+                  if (!location) return null;
+                  
+                  const maxCount = Math.max(...Object.values(locationCounts));
+                  const percentage = (count / maxCount) * 100;
+                  
+                  return (
+                    <div key={index} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm truncate max-w-[70%]">{location.name}</p>
+                        <span className="text-sm font-medium">{count}</span>
+                      </div>
+                      <div className="w-full bg-secondary rounded-full h-1.5">
+                        <div
+                          className="bg-primary h-1.5 rounded-full"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full bg-secondary rounded-full h-1.5">
-                      <div
-                        className="bg-primary h-1.5 rounded-full"
-                        style={{ width: `${(location.visitCount / initialLocations[0].visitCount) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
+                
+              {Object.keys(locationCounts).length === 0 && (
+                <div className="py-4 text-center text-muted-foreground">
+                  Keine Orte gefunden.
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
