@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, PieChart } from '@/components/ui/charts';
@@ -149,9 +148,7 @@ const Statistics = () => {
                 strokeWidth="2"
                 className="h-4 w-4 text-muted-foreground"
               >
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 1 0 7.75M16 3.13a4 4 0 0 1 0 7.75" />
               </svg>
             </CardHeader>
             <CardContent>
@@ -197,8 +194,8 @@ const Statistics = () => {
             <CardContent className="pl-2">
               <PieChart 
                 data={categoryData} 
-                width={400} 
-                height={300} 
+                index="name"
+                categories={["value"]}
               />
             </CardContent>
           </Card>
@@ -212,8 +209,8 @@ const Statistics = () => {
             <CardContent>
               <BarChart 
                 data={locationData} 
-                width={400} 
-                height={300}
+                index="name"
+                categories={["value"]}
               />
             </CardContent>
           </Card>
