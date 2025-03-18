@@ -6,6 +6,7 @@ import Assignments from './pages/Assignments';
 import Categories from './pages/Categories';
 import Locations from './pages/Locations';
 import Statistics from './pages/Statistics';
+import Interpreters from './pages/Interpreters';
 import NotFound from './pages/NotFound';
 import { Toaster } from './components/ui/toaster';
 import { DataProvider } from './contexts/DataContext';
@@ -19,6 +20,7 @@ function App() {
           <Route path="/assignments" element={<Assignments />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/locations" element={<Locations />} />
+          <Route path="/interpreters" element={<Interpreters />} />
           <Route path="/statistics" element={<Statistics />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

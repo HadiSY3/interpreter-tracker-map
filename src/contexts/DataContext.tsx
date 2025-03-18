@@ -1,6 +1,15 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Assignment, Category, Location, initialCategories, initialLocations, initialAssignments } from '@/lib/types';
+import { 
+  Assignment, 
+  Category, 
+  Location, 
+  Interpreter,
+  initialCategories, 
+  initialLocations, 
+  initialAssignments,
+  initialInterpreters 
+} from '@/lib/types';
 
 interface DataContextType {
   categories: Category[];
@@ -9,6 +18,10 @@ interface DataContextType {
   setLocations: React.Dispatch<React.SetStateAction<Location[]>>;
   assignments: Assignment[];
   setAssignments: React.Dispatch<React.SetStateAction<Assignment[]>>;
+  interpreters: Interpreter[];
+  setInterpreters: React.Dispatch<React.SetStateAction<Interpreter[]>>;
+  // Hilfsfunktion, um Einsätze nach Dolmetscher zu filtern
+  getAssignmentsByInterpreter: (interpreterId: string) => Assignment[];
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -17,6 +30,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [categories, setCategories] = useState<Category[]>(initialCategories);
   const [locations, setLocations] = useState<Location[]>(initialLocations);
   const [assignments, setAssignments] = useState<Assignment[]>(initialAssignments);
+  const [interpreters, setInterpreters] = useState<Interpreter[]>(initialInterpreters);
+
+  // Hilfsfunktion, um Einsätze nach Dolmetscher zu filtern
+  const getAssignmentsByInterpreter = (interpreterId: string) => {
+    return assignments.filter(assignment => 
+      assignment.interpreter && assignment.interpreter.id === interpreterId
+    );
+  };
 
   return (
     <DataContext.Provider value={{
@@ -25,7 +46,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       locations,
       setLocations,
       assignments,
-      setAssignments
+      setAssignments,
+      interpreters,
+      setInterpreters,
+      getAssignmentsByInterpreter
     }}>
       {children}
     </DataContext.Provider>

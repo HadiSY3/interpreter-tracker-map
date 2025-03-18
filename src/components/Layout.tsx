@@ -1,3 +1,4 @@
+
 import React, { ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -10,7 +11,8 @@ import {
   Menu,
   X,
   LogOut,
-  MapPin
+  MapPin,
+  Users
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -43,6 +45,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       title: 'Kategorien',
       href: '/categories',
       icon: <Tag className="h-5 w-5" />,
+    },
+    {
+      title: 'Dolmetscher',
+      href: '/interpreters',
+      icon: <Users className="h-5 w-5" />,
     },
     {
       title: 'Statistiken',

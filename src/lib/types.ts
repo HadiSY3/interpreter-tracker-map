@@ -7,6 +7,7 @@ export interface Assignment {
   startTime: Date;
   endTime: Date;
   notes?: string;
+  interpreter?: Interpreter; // Optionales Feld für den Dolmetscher
 }
 
 export interface Location {
@@ -24,11 +25,41 @@ export interface Category {
   minuteRate: number;
 }
 
+// Neuer Typ für Dolmetscher
+export interface Interpreter {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  languages?: string[];
+  assignmentCount?: number;
+}
+
 // Initial data for locations - now empty
 export const initialLocations: Location[] = [];
 
 // Initial data for categories - now empty
 export const initialCategories: Category[] = [];
+
+// Initial data for interpreters - with two example interpreters
+export const initialInterpreters: Interpreter[] = [
+  {
+    id: "int-1",
+    name: "Thomas Schmidt",
+    email: "thomas.schmidt@example.com",
+    phone: "+49123456789",
+    languages: ["Deutsch", "Englisch", "Französisch"],
+    assignmentCount: 0
+  },
+  {
+    id: "int-2",
+    name: "Müller, Anna",
+    email: "anna.mueller@example.com",
+    phone: "+49987654321",
+    languages: ["Deutsch", "Spanisch", "Italienisch"],
+    assignmentCount: 0
+  }
+];
 
 // Initial assignments - now empty
 export const initialAssignments: Assignment[] = [];
