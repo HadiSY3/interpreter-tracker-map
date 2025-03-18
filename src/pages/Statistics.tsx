@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Layout from '@/components/Layout';
@@ -11,10 +12,9 @@ import { cn } from '@/lib/utils';
 
 const Statistics = () => {
   // Calculate statistics
-  const totalEarnings = initialAssignments.reduce(
-    (sum, assignment) => sum + calculateEarnings(assignment), 
-    0
-  ).toFixed(2);
+  const totalEarnings = initialAssignments.length > 0 
+    ? initialAssignments.reduce((sum, assignment) => sum + calculateEarnings(assignment), 0).toFixed(2)
+    : "0.00";
 
   const assignmentsByLocation = initialLocations.map(location => {
     const count = initialAssignments.filter(
@@ -40,26 +40,37 @@ const Statistics = () => {
     };
   }).sort((a, b) => b.value - a.value);
 
-  // Calculate hours per month (mock data for demo)
+  // Default monthly data with zeros
   const monthlyData = [
-    { name: 'Jan', hours: 8 },
-    { name: 'Feb', hours: 12 },
-    { name: 'Mär', hours: 15 },
-    { name: 'Apr', hours: 10 },
-    { name: 'Mai', hours: 22 },
-    { name: 'Jun', hours: 18 },
-    { name: 'Jul', hours: 20 },
-    { name: 'Aug', hours: 14 },
-    { name: 'Sep', hours: 24 },
-    { name: 'Okt', hours: 25 },
+    { name: 'Jan', hours: 0 },
+    { name: 'Feb', hours: 0 },
+    { name: 'Mär', hours: 0 },
+    { name: 'Apr', hours: 0 },
+    { name: 'Mai', hours: 0 },
+    { name: 'Jun', hours: 0 },
+    { name: 'Jul', hours: 0 },
+    { name: 'Aug', hours: 0 },
+    { name: 'Sep', hours: 0 },
+    { name: 'Okt', hours: 0 },
     { name: 'Nov', hours: 0 },
     { name: 'Dez', hours: 0 },
   ];
 
-  const earningsChartData = earningsByCategory.map(item => ({
-    name: item.name,
-    Umsatz: item.value,
-  }));
+  // If we have assignments, calculate hours per month
+  if (initialAssignments.length > 0) {
+    initialAssignments.forEach(assignment => {
+      const month = assignment.startTime.getMonth();
+      const durationHours = (assignment.endTime.getTime() - assignment.startTime.getTime()) / (1000 * 60 * 60);
+      monthlyData[month].hours += durationHours;
+    });
+  }
+
+  const earningsChartData = earningsByCategory.length > 0 
+    ? earningsByCategory.map(item => ({
+        name: item.name,
+        Umsatz: item.value,
+      }))
+    : [{ name: 'Keine Daten', Umsatz: 0 }];
 
   const hoursChartData = monthlyData.map(item => ({
     name: item.name,
@@ -67,7 +78,15 @@ const Statistics = () => {
   }));
 
   const barColors = ['hsl(210, 100%, 50%)'];
-  const pieColors = earningsByCategory.map(item => item.color);
+  const pieColors = earningsByCategory.length > 0 
+    ? earningsByCategory.map(item => item.color)
+    : ['#cccccc'];
+
+  const noDataMessage = (
+    <div className="text-center py-6 text-muted-foreground">
+      <p>Noch keine Daten vorhanden. Fügen Sie Einsätze und Kategorien hinzu, um Statistiken zu sehen.</p>
+    </div>
+  );
 
   return (
     <Layout>
@@ -89,8 +108,10 @@ const Statistics = () => {
           />
           <StatsCard
             title="Einsatzstunden"
-            value="168h"
-            description="Letztes Jahr"
+            value={initialAssignments.length > 0 
+              ? `${monthlyData.reduce((sum, month) => sum + month.hours, 0).toFixed(1)}h` 
+              : "0h"}
+            description="Insgesamt"
             icon={Clock}
             color="bg-blue-500/10 text-blue-600"
           />
@@ -115,22 +136,24 @@ const Statistics = () => {
                   Verteilung der Arbeitsstunden
                 </CardDescription>
               </div>
-              <TrendingUp className="h-5 w-5 text-green-500" />
+              {initialAssignments.length > 0 && <TrendingUp className="h-5 w-5 text-green-500" />}
             </CardHeader>
             <CardContent className="pt-4">
-              <div className="h-[300px]">
-                <BarChart 
-                  data={hoursChartData}
-                  index="name"
-                  categories={["Stunden"]}
-                  colors={barColors}
-                  valueFormatter={(value) => `${value}h`}
-                  showLegend={false}
-                  showXAxis={true}
-                  showYAxis={true}
-                  showGridLines={true}
-                />
-              </div>
+              {initialAssignments.length > 0 ? (
+                <div className="h-[300px]">
+                  <BarChart 
+                    data={hoursChartData}
+                    index="name"
+                    categories={["Stunden"]}
+                    colors={barColors}
+                    valueFormatter={(value) => `${value.toFixed(1)}h`}
+                    showLegend={false}
+                    showXAxis={true}
+                    showYAxis={true}
+                    showGridLines={true}
+                  />
+                </div>
+              ) : noDataMessage}
             </CardContent>
           </Card>
 
@@ -147,16 +170,18 @@ const Statistics = () => {
               </div>
             </CardHeader>
             <CardContent className="pt-4">
-              <div className="h-[300px]">
-                <PieChart 
-                  data={earningsChartData}
-                  index="name"
-                  categories={["Umsatz"]}
-                  colors={pieColors}
-                  valueFormatter={(value) => `€${value.toFixed(2)}`}
-                  showAnimation={true}
-                />
-              </div>
+              {initialCategories.length > 0 && initialAssignments.length > 0 ? (
+                <div className="h-[300px]">
+                  <PieChart 
+                    data={earningsChartData}
+                    index="name"
+                    categories={["Umsatz"]}
+                    colors={pieColors}
+                    valueFormatter={(value) => `€${value.toFixed(2)}`}
+                    showAnimation={true}
+                  />
+                </div>
+              ) : noDataMessage}
             </CardContent>
           </Card>
         </div>
@@ -173,27 +198,29 @@ const Statistics = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {assignmentsByLocation.slice(0, 5).map((location, index) => (
-                  <div key={index} className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium truncate max-w-[70%]">
-                        {location.name}
-                      </span>
-                      <span className="text-sm">{location.count} Einsätze</span>
+              {assignmentsByLocation.length > 0 ? (
+                <div className="space-y-6">
+                  {assignmentsByLocation.slice(0, 5).map((location, index) => (
+                    <div key={index} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium truncate max-w-[70%]">
+                          {location.name}
+                        </span>
+                        <span className="text-sm">{location.count} Einsätze</span>
+                      </div>
+                      <div className="w-full bg-secondary rounded-full h-2">
+                        <div
+                          className="rounded-full h-2"
+                          style={{ 
+                            width: `${(location.count / Math.max(1, assignmentsByLocation[0].count)) * 100}%`,
+                            backgroundColor: location.color 
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full bg-secondary rounded-full h-2">
-                      <div
-                        className="rounded-full h-2"
-                        style={{ 
-                          width: `${(location.count / assignmentsByLocation[0].count) * 100}%`,
-                          backgroundColor: location.color 
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : noDataMessage}
             </CardContent>
           </Card>
 
@@ -208,27 +235,29 @@ const Statistics = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {earningsByCategory.map((category, index) => (
-                  <div key={index} className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium truncate max-w-[70%]">
-                        {category.name}
-                      </span>
-                      <span className="text-sm">€{category.value.toFixed(2)}</span>
+              {earningsByCategory.length > 0 ? (
+                <div className="space-y-6">
+                  {earningsByCategory.map((category, index) => (
+                    <div key={index} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium truncate max-w-[70%]">
+                          {category.name}
+                        </span>
+                        <span className="text-sm">€{category.value.toFixed(2)}</span>
+                      </div>
+                      <div className="w-full bg-secondary rounded-full h-2">
+                        <div
+                          className="rounded-full h-2"
+                          style={{ 
+                            width: `${(category.value / Math.max(0.01, earningsByCategory[0].value)) * 100}%`,
+                            backgroundColor: category.color 
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full bg-secondary rounded-full h-2">
-                      <div
-                        className="rounded-full h-2"
-                        style={{ 
-                          width: `${(category.value / earningsByCategory[0].value) * 100}%`,
-                          backgroundColor: category.color 
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : noDataMessage}
             </CardContent>
           </Card>
         </div>
