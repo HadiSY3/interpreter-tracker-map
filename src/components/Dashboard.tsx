@@ -1,62 +1,95 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
-  MapPin, Clock, CalendarDays, DollarSign, TrendingUp, Users 
+  MapPin, Clock, CalendarDays, DollarSign, TrendingUp, Users, 
+  FileText, Download, Calendar 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Assignment, calculateEarnings, calculateDuration, Interpreter } from '@/lib/types';
 import { useData } from '@/contexts/DataContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/use-toast';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
 
 interface DashboardProps {
   className?: string;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ className }) => {
-  const { assignments, locations, interpreters } = useData();
+  const { assignments, locations, interpreters, categories } = useData();
   const [selectedInterpreter, setSelectedInterpreter] = React.useState<string>("all");
+  const [startDate, setStartDate] = React.useState<Date | null>(null);
+  const [endDate, setEndDate] = React.useState<Date | null>(null);
   
   // Filter assignments based on selected interpreter
-  const filteredAssignments = React.useMemo(() => {
-    if (selectedInterpreter === "all") {
-      return assignments;
+  const filteredAssignments = useMemo(() => {
+    let filtered = assignments;
+    
+    if (selectedInterpreter !== "all") {
+      filtered = filtered.filter(a => 
+        a.interpreter && a.interpreter.id === selectedInterpreter
+      );
     }
-    return assignments.filter(a => 
-      a.interpreter && a.interpreter.id === selectedInterpreter
-    );
-  }, [assignments, selectedInterpreter]);
+    
+    if (startDate) {
+      filtered = filtered.filter(a => a.startTime >= startDate);
+    }
+    
+    if (endDate) {
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(a => a.startTime <= endOfDay);
+    }
+    
+    return filtered;
+  }, [assignments, selectedInterpreter, startDate, endDate]);
 
   // Calculate total earnings
-  const totalEarnings = filteredAssignments.reduce(
-    (sum, assignment) => sum + calculateEarnings(assignment), 
-    0
-  );
+  const totalEarnings = useMemo(() => {
+    return filteredAssignments.reduce(
+      (sum, assignment) => sum + calculateEarnings(assignment), 
+      0
+    );
+  }, [filteredAssignments, categories]); // Adding categories as dependency to recalculate when they change
 
   // Calculate total hours worked
-  const totalMinutes = filteredAssignments.reduce(
-    (sum, assignment) => sum + calculateDuration(assignment), 
-    0
-  );
+  const totalMinutes = useMemo(() => {
+    return filteredAssignments.reduce(
+      (sum, assignment) => sum + calculateDuration(assignment), 
+      0
+    );
+  }, [filteredAssignments]);
+  
   const totalHours = (totalMinutes / 60).toFixed(1);
 
   // Get most visited location for filtered assignments
-  const locationCounts = filteredAssignments.reduce((counts: Record<string, number>, assignment) => {
-    const locationId = assignment.location.id;
-    counts[locationId] = (counts[locationId] || 0) + 1;
-    return counts;
-  }, {});
+  const locationCounts = useMemo(() => {
+    return filteredAssignments.reduce((counts: Record<string, number>, assignment) => {
+      const locationId = assignment.location.id;
+      counts[locationId] = (counts[locationId] || 0) + 1;
+      return counts;
+    }, {});
+  }, [filteredAssignments]);
 
   // Find the location with the most visits
-  let mostVisitedLocation = locations[0];
-  let maxVisits = 0;
-  
-  Object.entries(locationCounts).forEach(([locationId, count]) => {
-    if (count > maxVisits) {
-      maxVisits = count;
-      mostVisitedLocation = locations.find(loc => loc.id === locationId) || locations[0];
-    }
-  });
+  const { mostVisitedLocation, maxVisits } = useMemo(() => {
+    let mostVisitedLocation = locations[0];
+    let maxVisits = 0;
+    
+    Object.entries(locationCounts).forEach(([locationId, count]) => {
+      if (count > maxVisits) {
+        maxVisits = count;
+        mostVisitedLocation = locations.find(loc => loc.id === locationId) || locations[0];
+      }
+    });
+    
+    return { mostVisitedLocation, maxVisits };
+  }, [locationCounts, locations]);
 
   const stats = [
     {
@@ -86,9 +119,105 @@ const Dashboard: React.FC<DashboardProps> = ({ className }) => {
     },
   ];
 
+  // Generate PDF function
+  const generatePDF = () => {
+    if (!selectedInterpreter || selectedInterpreter === "all") {
+      toast({
+        title: "Fehler",
+        description: "Bitte wählen Sie einen Dolmetscher aus",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!startDate || !endDate) {
+      toast({
+        title: "Fehler",
+        description: "Bitte wählen Sie einen Zeitraum aus",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const interpreter = interpreters.find(i => i.id === selectedInterpreter);
+      
+      if (!interpreter) {
+        toast({
+          title: "Fehler",
+          description: "Dolmetscher nicht gefunden",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Create PDF document
+      const doc = new jsPDF();
+      
+      // Add title
+      doc.setFontSize(20);
+      doc.text('Einsatzübersicht', 14, 22);
+      
+      // Add interpreter info
+      doc.setFontSize(12);
+      doc.text(`Dolmetscher: ${interpreter.name}`, 14, 32);
+      doc.text(`Zeitraum: ${format(startDate, 'dd.MM.yyyy')} - ${format(endDate, 'dd.MM.yyyy')}`, 14, 38);
+      
+      // Add summary
+      doc.setFontSize(11);
+      doc.text(`Gesamtvergütung: €${totalEarnings.toFixed(2)}`, 14, 48);
+      doc.text(`Einsatzstunden: ${totalHours}h`, 14, 54);
+      doc.text(`Anzahl der Einsätze: ${filteredAssignments.length}`, 14, 60);
+      
+      // Add table with assignments
+      const tableColumn = ['Datum', 'Klient', 'Ort', 'Kategorie', 'Dauer', 'Vergütung'];
+      const tableRows = filteredAssignments.map(assignment => {
+        const durationMinutes = calculateDuration(assignment);
+        const hours = Math.floor(durationMinutes / 60);
+        const minutes = durationMinutes % 60;
+        const durationText = `${hours > 0 ? `${hours}h ` : ''}${minutes}min`;
+        
+        return [
+          format(assignment.startTime, 'dd.MM.yyyy'),
+          assignment.clientName,
+          assignment.location.name,
+          assignment.category.name,
+          durationText,
+          `€${calculateEarnings(assignment).toFixed(2)}`
+        ];
+      });
+      
+      // @ts-ignore
+      doc.autoTable({
+        head: [tableColumn],
+        body: tableRows,
+        startY: 70,
+        theme: 'grid',
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [41, 128, 185] }
+      });
+      
+      // Save PDF
+      const filename = `einsaetze_${interpreter.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      doc.save(filename);
+      
+      toast({
+        title: "PDF erstellt",
+        description: `Die PDF-Datei wurde erfolgreich generiert.`
+      });
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      toast({
+        title: "Fehler",
+        description: "Beim Erstellen der PDF ist ein Fehler aufgetreten.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className={cn("space-y-6 animate-fade-up", className)}>
-      <div className="flex justify-end mb-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 flex-wrap">
         <div className="w-full sm:w-[250px]">
           <Select 
             value={selectedInterpreter} 
@@ -106,6 +235,43 @@ const Dashboard: React.FC<DashboardProps> = ({ className }) => {
               ))}
             </SelectContent>
           </Select>
+        </div>
+        
+        <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center">
+              <Calendar className="mr-2 h-4 w-4" />
+              <span className="text-sm text-muted-foreground">Von:</span>
+            </div>
+            <input 
+              type="date" 
+              className="px-3 py-1 rounded-md border border-border text-sm"
+              value={startDate ? format(startDate, 'yyyy-MM-dd') : ''}
+              onChange={(e) => setStartDate(e.target.value ? new Date(e.target.value) : null)}
+            />
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <div className="flex items-center">
+              <Calendar className="mr-2 h-4 w-4" />
+              <span className="text-sm text-muted-foreground">Bis:</span>
+            </div>
+            <input 
+              type="date" 
+              className="px-3 py-1 rounded-md border border-border text-sm"
+              value={endDate ? format(endDate, 'yyyy-MM-dd') : ''}
+              onChange={(e) => setEndDate(e.target.value ? new Date(e.target.value) : null)}
+            />
+          </div>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="ml-2"
+            onClick={generatePDF}
+          >
+            <FileText className="mr-2 h-4 w-4" /> PDF erstellen
+          </Button>
         </div>
       </div>
       

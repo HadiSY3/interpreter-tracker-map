@@ -1,4 +1,3 @@
-
 export interface Assignment {
   id: string;
   clientName: string;
@@ -8,6 +7,7 @@ export interface Assignment {
   endTime: Date;
   notes?: string;
   interpreter?: Interpreter; // Optionales Feld für den Dolmetscher
+  language?: string; // Neue Eigenschaft für die verwendete Sprache
 }
 
 export interface Location {
@@ -385,3 +385,4 @@ export const formatTime = (date: Date): string => {
     minute: '2-digit'
   });
 };
+
