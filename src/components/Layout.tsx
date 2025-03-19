@@ -10,7 +10,6 @@ import {
   BarChart4,
   Menu,
   X,
-  LogOut,
   MapPin,
   Users
 } from 'lucide-react';
@@ -117,12 +116,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </Link>
             ))}
           </nav>
-          <div className="pt-4 border-t mt-8">
-            <Button variant="ghost" className="w-full justify-start text-red-500">
-              <LogOut className="mr-3 h-5 w-5" />
-              Abmelden
-            </Button>
-          </div>
         </aside>
 
         {/* Mobile Menu */}
@@ -156,12 +149,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   ))}
                 </div>
               </nav>
-              <div className="p-4 border-t">
-                <Button variant="ghost" className="w-full justify-start text-red-500">
-                  <LogOut className="mr-3 h-5 w-5" />
-                  Abmelden
-                </Button>
-              </div>
             </div>
           </div>
         )}

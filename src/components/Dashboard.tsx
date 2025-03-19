@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   MapPin, Clock, CalendarDays, DollarSign, TrendingUp, Users, 
-  FileText, Download, Calendar 
+  FileText, Calendar 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Assignment, calculateEarnings, calculateDuration, Interpreter } from '@/lib/types';
@@ -12,9 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
 import { format } from 'date-fns';
-import { de } from 'date-fns/locale';
+
+// Import the autotable module correctly
+import autoTable from 'jspdf-autotable';
 
 interface DashboardProps {
   className?: string;
@@ -55,7 +56,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className }) => {
       (sum, assignment) => sum + calculateEarnings(assignment), 
       0
     );
-  }, [filteredAssignments, categories]); // Adding categories as dependency to recalculate when they change
+  }, [filteredAssignments]);
 
   // Calculate total hours worked
   const totalMinutes = useMemo(() => {
@@ -187,8 +188,8 @@ const Dashboard: React.FC<DashboardProps> = ({ className }) => {
         ];
       });
       
-      // @ts-ignore
-      doc.autoTable({
+      // Use the imported autoTable function correctly
+      autoTable(doc, {
         head: [tableColumn],
         body: tableRows,
         startY: 70,
