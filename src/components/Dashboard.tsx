@@ -3,18 +3,16 @@ import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   MapPin, Clock, CalendarDays, DollarSign, TrendingUp, Users, 
-  FileText, Calendar 
+  FileText, Calendar, BarChart, Printer
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Assignment, calculateEarnings, calculateDuration, Interpreter } from '@/lib/types';
+import { Assignment, calculateDuration, Interpreter } from '@/lib/types';
 import { useData } from '@/contexts/DataContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { jsPDF } from 'jspdf';
 import { format } from 'date-fns';
-
-// Import the autotable module correctly
 import autoTable from 'jspdf-autotable';
 
 interface DashboardProps {
@@ -50,13 +48,26 @@ const Dashboard: React.FC<DashboardProps> = ({ className }) => {
     return filtered;
   }, [assignments, selectedInterpreter, startDate, endDate]);
 
-  // Calculate total earnings
+  // Get current category rates
+  const getCategoryRate = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category || null;
+  };
+
+  // Calculate total earnings with current rates
   const totalEarnings = useMemo(() => {
-    return filteredAssignments.reduce(
-      (sum, assignment) => sum + calculateEarnings(assignment), 
-      0
-    );
-  }, [filteredAssignments]);
+    return filteredAssignments.reduce((sum, assignment) => {
+      // Use current category rates
+      const currentCategory = getCategoryRate(assignment.category.id);
+      if (currentCategory) {
+        const durationMinutes = calculateDuration(assignment);
+        return sum + (durationMinutes * currentCategory.minuteRate);
+      }
+      // Fallback to assignment's stored category if current not found
+      const durationMinutes = calculateDuration(assignment);
+      return sum + (durationMinutes * assignment.category.minuteRate);
+    }, 0);
+  }, [filteredAssignments, categories]);
 
   // Calculate total hours worked
   const totalMinutes = useMemo(() => {
@@ -92,6 +103,7 @@ const Dashboard: React.FC<DashboardProps> = ({ className }) => {
     return { mostVisitedLocation, maxVisits };
   }, [locationCounts, locations]);
 
+  // Stats for dashboard cards
   const stats = [
     {
       title: 'Gesamtvergütung',
@@ -178,17 +190,22 @@ const Dashboard: React.FC<DashboardProps> = ({ className }) => {
         const minutes = durationMinutes % 60;
         const durationText = `${hours > 0 ? `${hours}h ` : ''}${minutes}min`;
         
+        // Calculate earnings with current rates
+        const currentCategory = getCategoryRate(assignment.category.id);
+        const earnings = currentCategory 
+          ? durationMinutes * currentCategory.minuteRate 
+          : durationMinutes * assignment.category.minuteRate;
+        
         return [
           format(assignment.startTime, 'dd.MM.yyyy'),
           assignment.clientName,
           assignment.location.name,
           assignment.category.name,
           durationText,
-          `€${calculateEarnings(assignment).toFixed(2)}`
+          `€${earnings.toFixed(2)}`
         ];
       });
       
-      // Use the imported autoTable function correctly
       autoTable(doc, {
         head: [tableColumn],
         body: tableRows,
@@ -211,6 +228,132 @@ const Dashboard: React.FC<DashboardProps> = ({ className }) => {
       toast({
         title: "Fehler",
         description: "Beim Erstellen der PDF ist ein Fehler aufgetreten.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Generate invoice function for new feature
+  const generateInvoice = () => {
+    if (!selectedInterpreter || selectedInterpreter === "all") {
+      toast({
+        title: "Fehler",
+        description: "Bitte wählen Sie einen Dolmetscher aus",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!startDate || !endDate) {
+      toast({
+        title: "Fehler",
+        description: "Bitte wählen Sie einen Zeitraum aus",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const interpreter = interpreters.find(i => i.id === selectedInterpreter);
+      
+      if (!interpreter) {
+        toast({
+          title: "Fehler",
+          description: "Dolmetscher nicht gefunden",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Create PDF document
+      const doc = new jsPDF();
+      
+      // Add header
+      doc.setFontSize(20);
+      doc.text('Rechnung', 14, 22);
+      
+      // Add invoice number and date
+      const today = new Date();
+      const invoiceNumber = `INV-${interpreter.id.substring(0, 4)}-${format(today, 'yyyyMMdd')}`;
+      
+      doc.setFontSize(12);
+      doc.text(`Rechnungsnummer: ${invoiceNumber}`, 14, 32);
+      doc.text(`Datum: ${format(today, 'dd.MM.yyyy')}`, 14, 38);
+      
+      // Add interpreter info
+      doc.text(`Dolmetscher: ${interpreter.name}`, 14, 48);
+      doc.text(`Email: ${interpreter.email}`, 14, 54);
+      if (interpreter.phone) {
+        doc.text(`Telefon: ${interpreter.phone}`, 14, 60);
+      }
+      
+      // Add billing period
+      doc.text(`Abrechnungszeitraum: ${format(startDate, 'dd.MM.yyyy')} - ${format(endDate, 'dd.MM.yyyy')}`, 14, 70);
+      
+      // Add table with assignments
+      const tableColumn = ['Datum', 'Klient', 'Kategorie', 'Stunden', 'Stundensatz', 'Betrag'];
+      const tableRows = filteredAssignments.map(assignment => {
+        const durationMinutes = calculateDuration(assignment);
+        const hours = durationMinutes / 60;
+        
+        // Get current category rates
+        const currentCategory = getCategoryRate(assignment.category.id);
+        const hourlyRate = currentCategory ? currentCategory.hourlyRate : assignment.category.hourlyRate;
+        const amount = hours * hourlyRate;
+        
+        return [
+          format(assignment.startTime, 'dd.MM.yyyy'),
+          assignment.clientName,
+          assignment.category.name,
+          hours.toFixed(2),
+          `€${hourlyRate.toFixed(2)}`,
+          `€${amount.toFixed(2)}`
+        ];
+      });
+      
+      // Calculate total amount
+      const totalAmount = filteredAssignments.reduce((total, assignment) => {
+        const durationMinutes = calculateDuration(assignment);
+        const hours = durationMinutes / 60;
+        
+        // Get current category rates
+        const currentCategory = getCategoryRate(assignment.category.id);
+        const hourlyRate = currentCategory ? currentCategory.hourlyRate : assignment.category.hourlyRate;
+        
+        return total + (hours * hourlyRate);
+      }, 0);
+      
+      // Add invoice table
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 80,
+        theme: 'grid',
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [41, 128, 185] }
+      });
+      
+      // Add total amount
+      const finalY = (doc as any).lastAutoTable.finalY || 150;
+      doc.text(`Gesamtbetrag: €${totalAmount.toFixed(2)}`, 150, finalY + 20, { align: 'right' });
+      
+      // Add payment information
+      doc.text('Zahlungsinformationen:', 14, finalY + 40);
+      doc.text('Bitte überweisen Sie den Betrag innerhalb von 14 Tagen.', 14, finalY + 46);
+      
+      // Save PDF
+      const filename = `rechnung_${interpreter.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      doc.save(filename);
+      
+      toast({
+        title: "Rechnung erstellt",
+        description: `Die Rechnung wurde erfolgreich generiert.`
+      });
+    } catch (error) {
+      console.error("Invoice generation error:", error);
+      toast({
+        title: "Fehler",
+        description: "Beim Erstellen der Rechnung ist ein Fehler aufgetreten.",
         variant: "destructive"
       });
     }
@@ -265,14 +408,25 @@ const Dashboard: React.FC<DashboardProps> = ({ className }) => {
             />
           </div>
           
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="ml-2"
-            onClick={generatePDF}
-          >
-            <FileText className="mr-2 h-4 w-4" /> PDF erstellen
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={generatePDF}
+              title="Einsatzübersicht als PDF erstellen"
+            >
+              <FileText className="mr-2 h-4 w-4" /> Bericht
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={generateInvoice}
+              title="Rechnung für Dolmetscher erstellen"
+            >
+              <Printer className="mr-2 h-4 w-4" /> Rechnung
+            </Button>
+          </div>
         </div>
       </div>
       
@@ -312,28 +466,37 @@ const Dashboard: React.FC<DashboardProps> = ({ className }) => {
               {filteredAssignments
                 .sort((a, b) => b.startTime.getTime() - a.startTime.getTime())
                 .slice(0, 3)
-                .map((assignment, index) => (
-                <div 
-                  key={index}
-                  className="flex items-center p-3 rounded-lg border border-border/50 bg-white hover:bg-secondary/50 transition-colors"
-                >
-                  <div className="mr-4 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{assignment.clientName}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {assignment.location.name} • {assignment.startTime.toLocaleDateString('de-DE')}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">€{calculateEarnings(assignment).toFixed(2)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {calculateDuration(assignment)} Min.
-                    </p>
-                  </div>
-                </div>
-              ))}
+                .map((assignment, index) => {
+                  // Calculate earnings with current rates
+                  const durationMinutes = calculateDuration(assignment);
+                  const currentCategory = getCategoryRate(assignment.category.id);
+                  const earnings = currentCategory 
+                    ? durationMinutes * currentCategory.minuteRate 
+                    : durationMinutes * assignment.category.minuteRate;
+                
+                  return (
+                    <div 
+                      key={index}
+                      className="flex items-center p-3 rounded-lg border border-border/50 bg-white hover:bg-secondary/50 transition-colors"
+                    >
+                      <div className="mr-4 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                        <Users className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{assignment.clientName}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {assignment.location.name} • {assignment.startTime.toLocaleDateString('de-DE')}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium">€{earnings.toFixed(2)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {durationMinutes} Min.
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
               
               {filteredAssignments.length === 0 && (
                 <div className="p-4 text-center text-muted-foreground">
@@ -388,6 +551,67 @@ const Dashboard: React.FC<DashboardProps> = ({ className }) => {
           </CardContent>
         </Card>
       </div>
+
+      {/* New Section: Monthly Overview */}
+      <Card className="border border-border/50 shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <BarChart className="mr-2 h-5 w-5 text-primary" />
+            Monatliche Übersicht
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Monthly Earnings Card */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Einnahmen diesen Monat</h3>
+              <div className="text-3xl font-bold">
+                €{filteredAssignments
+                  .filter(a => {
+                    const now = new Date();
+                    return a.startTime.getMonth() === now.getMonth() && 
+                           a.startTime.getFullYear() === now.getFullYear();
+                  })
+                  .reduce((sum, a) => {
+                    const durationMinutes = calculateDuration(a);
+                    const currentCategory = getCategoryRate(a.category.id);
+                    return sum + (durationMinutes * (currentCategory?.minuteRate || a.category.minuteRate));
+                  }, 0)
+                  .toFixed(2)}
+              </div>
+            </div>
+
+            {/* Monthly Hours Card */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Stunden diesen Monat</h3>
+              <div className="text-3xl font-bold">
+                {(filteredAssignments
+                  .filter(a => {
+                    const now = new Date();
+                    return a.startTime.getMonth() === now.getMonth() && 
+                          a.startTime.getFullYear() === now.getFullYear();
+                  })
+                  .reduce((sum, a) => sum + calculateDuration(a), 0) / 60)
+                  .toFixed(1)}h
+              </div>
+            </div>
+
+            {/* Monthly Assignments Card */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Einsätze diesen Monat</h3>
+              <div className="text-3xl font-bold">
+                {filteredAssignments
+                  .filter(a => {
+                    const now = new Date();
+                    return a.startTime.getMonth() === now.getMonth() && 
+                          a.startTime.getFullYear() === now.getFullYear();
+                  })
+                  .length}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

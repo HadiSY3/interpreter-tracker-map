@@ -43,8 +43,21 @@ const StatisticsView = () => {
     );
   }
 
-  // Calculate total earnings
+  // Get current category rates
+  const getCategoryRate = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category || null;
+  };
+
+  // Calculate total earnings with current rates
   const totalEarnings = filteredAssignments.reduce((sum, assignment) => {
+    // Get current category to use current rates
+    const currentCategory = getCategoryRate(assignment.category.id);
+    if (currentCategory) {
+      // Calculate using current category rates
+      const durationMinutes = calculateDuration(assignment);
+      return sum + (durationMinutes * currentCategory.minuteRate);
+    }
     return sum + calculateEarnings(assignment);
   }, 0);
 
@@ -57,7 +70,12 @@ const StatisticsView = () => {
   const categoryData = categories.map(category => {
     const categoryAssignments = filteredAssignments.filter(a => a.category.id === category.id);
     const count = categoryAssignments.length;
-    const earnings = categoryAssignments.reduce((sum, a) => sum + calculateEarnings(a), 0);
+    
+    // Calculate earnings with current rates
+    const earnings = categoryAssignments.reduce((sum, a) => {
+      const durationMinutes = calculateDuration(a);
+      return sum + (durationMinutes * category.minuteRate);
+    }, 0);
     
     return {
       name: category.name,
@@ -81,9 +99,17 @@ const StatisticsView = () => {
       a => a.interpreter && a.interpreter.id === interpreter.id
     );
     const count = interpreterAssignments.length;
-    const earnings = interpreterAssignments.reduce(
-      (sum, a) => sum + calculateEarnings(a), 0
-    );
+    
+    // Calculate earnings with current rates
+    const earnings = interpreterAssignments.reduce((sum, a) => {
+      // Get current category
+      const currentCategory = getCategoryRate(a.category.id);
+      if (currentCategory) {
+        const durationMinutes = calculateDuration(a);
+        return sum + (durationMinutes * currentCategory.minuteRate);
+      }
+      return sum + calculateEarnings(a);
+    }, 0);
     
     return {
       name: interpreter.name,

@@ -123,7 +123,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
     
     toast({
       title: "Kategorie aktualisiert",
-      description: `Die Kategorie "${updatedCategory.name}" wurde erfolgreich aktualisiert.`
+      description: `Die Kategorie "${updatedCategory.name}" wurde erfolgreich aktualisiert. Die Änderungen wurden in der gesamten Anwendung übernommen.`
     });
   };
 
@@ -309,6 +309,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
             <DialogTitle>Kategorie bearbeiten</DialogTitle>
             <DialogDescription>
               Aktualisieren Sie die Details und Vergütungssätze dieser Kategorie.
+              Die Änderungen werden sofort in allen Statistiken übernommen.
             </DialogDescription>
           </DialogHeader>
           {editCategory && (
