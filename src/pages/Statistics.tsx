@@ -4,9 +4,10 @@ import Layout from '@/components/Layout';
 import StatisticsView from '@/components/StatisticsView';
 import ReportGenerator from '@/components/ReportGenerator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
 
 const Statistics = () => {
+  const [activeTab, setActiveTab] = React.useState("overview");
+
   return (
     <Layout>
       <div className="space-y-8">
@@ -17,7 +18,7 @@ const Statistics = () => {
           </p>
         </div>
         
-        <Tabs defaultValue="overview" className="w-full">
+        <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-6">
             <TabsTrigger value="overview" className="text-md">Übersicht</TabsTrigger>
             <TabsTrigger value="reports" className="text-md">Berichte & Rechnungen</TabsTrigger>

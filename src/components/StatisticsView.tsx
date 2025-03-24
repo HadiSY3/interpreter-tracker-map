@@ -1,18 +1,28 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, PieChart } from '@/components/ui/charts';
-import { calculateDuration, calculateEarnings } from '@/lib/types';
+import { calculateDuration, calculateEarnings, formatDate, formatTime } from '@/lib/types';
 import { useData } from '@/contexts/DataContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
-  DollarSign, Clock, CalendarDays, Users, MapPin 
+  DollarSign, Clock, CalendarDays, Users, MapPin, CheckCircle, Check
 } from 'lucide-react';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
+import { toast } from '@/components/ui/use-toast';
 
 const StatisticsView = () => {
-  const { assignments, categories, locations, interpreters } = useData();
+  const { assignments, setAssignments, categories, locations, interpreters } = useData();
   const [selectedInterpreter, setSelectedInterpreter] = React.useState<string>("all");
+  const [activeTab, setActiveTab] = React.useState<string>("overview");
   
   // Filter assignments based on selected interpreter
   const filteredAssignments = React.useMemo(() => {
@@ -23,6 +33,22 @@ const StatisticsView = () => {
       a.interpreter && a.interpreter.id === selectedInterpreter
     );
   }, [assignments, selectedInterpreter]);
+
+  // Handler for toggling payment status
+  const handlePaymentToggle = (assignmentId: string) => {
+    setAssignments(prev => prev.map(assignment => 
+      assignment.id === assignmentId 
+        ? { ...assignment, paid: !assignment.paid } 
+        : assignment
+    ));
+    
+    const assignment = assignments.find(a => a.id === assignmentId);
+    
+    toast({
+      title: assignment?.paid ? "Bezahlung zurückgesetzt" : "Als bezahlt markiert",
+      description: `Der Einsatz "${assignment?.clientName}" wurde als ${assignment?.paid ? "unbezahlt" : "bezahlt"} markiert.`,
+    });
+  };
 
   // Early return for empty data
   if (assignments.length === 0) {
@@ -126,10 +152,11 @@ const StatisticsView = () => {
   return (
     <div className="space-y-6 animate-fade-up">
       <div className="flex flex-col md:flex-row justify-between gap-4 items-start md:items-center">
-        <Tabs defaultValue="overview" className="w-full md:w-auto">
+        <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
           <TabsList>
             <TabsTrigger value="overview">Übersicht</TabsTrigger>
             <TabsTrigger value="interpreters">Dolmetscher</TabsTrigger>
+            <TabsTrigger value="assignments">Einsätze</TabsTrigger>
           </TabsList>
         </Tabs>
         
@@ -216,7 +243,7 @@ const StatisticsView = () => {
         </Card>
       </div>
       
-      <Tabs defaultValue="overview">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsContent value="overview" className="mt-0">
           <div className="grid gap-4 md:grid-cols-2">
             <Card className="col-span-1">
@@ -301,6 +328,102 @@ const StatisticsView = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="assignments" className="mt-0">
+          <Card>
+            <CardHeader>
+              <CardTitle>Einsatzübersicht</CardTitle>
+              <CardDescription>
+                {filteredAssignments.length} Einsätze {selectedInterpreter !== 'all' ? 'für ausgewählten Dolmetscher' : 'insgesamt'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {filteredAssignments.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>Keine Einsätze gefunden.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-purple-50/50">
+                        <TableHead className="w-[250px]">Klient</TableHead>
+                        <TableHead>Datum & Zeit</TableHead>
+                        <TableHead>Ort</TableHead>
+                        <TableHead>Kategorie</TableHead>
+                        <TableHead>Dauer</TableHead>
+                        <TableHead className="text-right">Vergütung</TableHead>
+                        <TableHead className="text-center w-[100px]">Bezahlt</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredAssignments.map((assignment) => {
+                        const durationMs = assignment.endTime.getTime() - assignment.startTime.getTime();
+                        const durationMinutes = Math.floor(durationMs / (1000 * 60));
+                        const hours = Math.floor(durationMinutes / 60);
+                        const minutes = durationMinutes % 60;
+                        const durationText = `${hours > 0 ? `${hours}h ` : ''}${minutes}min`;
+                        
+                        // Get current category rate for calculation
+                        const currentCategory = getCategoryRate(assignment.category.id);
+                        const earnings = currentCategory 
+                          ? (durationMinutes * currentCategory.minuteRate) 
+                          : calculateEarnings(assignment);
+                        
+                        return (
+                          <TableRow 
+                            key={assignment.id} 
+                            className={`group hover:bg-purple-50/30 ${assignment.paid ? 'opacity-60 bg-gray-50' : ''}`}
+                          >
+                            <TableCell className="font-medium">{assignment.clientName}</TableCell>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span>{formatDate(assignment.startTime)}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {formatTime(assignment.startTime)} - {formatTime(assignment.endTime)}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {assignment.location.name}
+                            </TableCell>
+                            <TableCell>
+                              {assignment.category.name}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Clock className="mr-1 h-3 w-3 text-purple-400" />
+                                <span>{durationText}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              €{earnings.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex justify-center items-center">
+                                <Checkbox 
+                                  checked={assignment.paid}
+                                  onCheckedChange={() => handlePaymentToggle(assignment.id)}
+                                  className={`${assignment.paid ? 'bg-green-500 border-green-500' : 'border-purple-300'}`}
+                                />
+                                {assignment.paid && (
+                                  <span className="ml-2 text-xs text-green-600 font-medium flex items-center">
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    Bezahlt
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

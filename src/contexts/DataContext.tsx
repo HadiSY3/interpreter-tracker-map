@@ -10,6 +10,7 @@ import {
   initialAssignments,
   initialInterpreters 
 } from '@/lib/types';
+import { toast } from '@/components/ui/use-toast';
 
 interface DataContextType {
   categories: Category[];
@@ -22,6 +23,9 @@ interface DataContextType {
   setInterpreters: React.Dispatch<React.SetStateAction<Interpreter[]>>;
   // Hilfsfunktion, um Einsätze nach Dolmetscher zu filtern
   getAssignmentsByInterpreter: (interpreterId: string) => Assignment[];
+  // Neue Funktionen zum sicheren Löschen von Kategorien und Orten
+  deleteCategory: (categoryId: string) => void;
+  deleteLocation: (locationId: string) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -39,6 +43,50 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     );
   };
 
+  // Funktion zum sicheren Löschen einer Kategorie
+  const deleteCategory = (categoryId: string) => {
+    // Prüfen, ob die Kategorie in Einsätzen verwendet wird
+    const assignmentsWithCategory = assignments.filter(a => a.category.id === categoryId);
+    
+    if (assignmentsWithCategory.length > 0) {
+      toast({
+        title: "Kategorie kann nicht gelöscht werden",
+        description: `Diese Kategorie wird in ${assignmentsWithCategory.length} Einsätzen verwendet. Bitte weisen Sie diesen Einsätzen zuerst eine andere Kategorie zu.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Kategorie löschen, wenn sie nicht verwendet wird
+    setCategories(prev => prev.filter(c => c.id !== categoryId));
+    toast({
+      title: "Kategorie gelöscht",
+      description: "Die Kategorie wurde erfolgreich gelöscht."
+    });
+  };
+
+  // Funktion zum sicheren Löschen eines Ortes
+  const deleteLocation = (locationId: string) => {
+    // Prüfen, ob der Ort in Einsätzen verwendet wird
+    const assignmentsWithLocation = assignments.filter(a => a.location.id === locationId);
+    
+    if (assignmentsWithLocation.length > 0) {
+      toast({
+        title: "Ort kann nicht gelöscht werden",
+        description: `Dieser Ort wird in ${assignmentsWithLocation.length} Einsätzen verwendet. Bitte weisen Sie diesen Einsätzen zuerst einen anderen Ort zu.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Ort löschen, wenn er nicht verwendet wird
+    setLocations(prev => prev.filter(l => l.id !== locationId));
+    toast({
+      title: "Ort gelöscht",
+      description: "Der Ort wurde erfolgreich gelöscht."
+    });
+  };
+
   return (
     <DataContext.Provider value={{
       categories,
@@ -49,7 +97,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setAssignments,
       interpreters,
       setInterpreters,
-      getAssignmentsByInterpreter
+      getAssignmentsByInterpreter,
+      deleteCategory,
+      deleteLocation
     }}>
       {children}
     </DataContext.Provider>
