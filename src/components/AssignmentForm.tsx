@@ -78,7 +78,7 @@ const AssignmentForm: React.FC<AssignmentFormProps> = ({
       location: initialData.location.id,
       category: initialData.category.id,
       interpreter: initialData.interpreter?.id || '',
-      language: '',
+      language: initialData.language || '',
       date: initialData.startTime,
       startTime: format(initialData.startTime, 'HH:mm'),
       endTime: format(initialData.endTime, 'HH:mm'),
@@ -143,7 +143,8 @@ const AssignmentForm: React.FC<AssignmentFormProps> = ({
       endTime: endTime,
       notes: values.notes,
       interpreter: selectedInterpreter,
-      language: values.language
+      language: values.language,
+      paid: initialData?.paid || false // Add the paid property with default value false
     };
 
     onSubmit(assignmentData);
