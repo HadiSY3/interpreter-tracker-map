@@ -5,14 +5,15 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, FileText, Printer, ArrowRight, Users } from 'lucide-react';
-import { format } from 'date-fns';
+import { Calendar, FileText, Printer, ArrowRight, Users, CalendarRange } from 'lucide-react';
+import { format, endOfDay } from 'date-fns';
 import { toast } from '@/components/ui/use-toast';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useData } from '@/contexts/DataContext';
 import { Assignment, calculateDuration } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 
 interface ReportGeneratorProps {
   className?: string;
@@ -46,9 +47,9 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ className }) => {
     }
     
     if (endDate) {
-      const endOfDay = new Date(endDate);
-      endOfDay.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(a => a.startTime <= endOfDay);
+      // Make end date inclusive by setting it to end of day
+      const endOfDayDate = endOfDay(endDate);
+      filtered = filtered.filter(a => a.startTime <= endOfDayDate);
     }
     
     return filtered;
@@ -88,10 +89,10 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ className }) => {
       return;
     }
 
-    if (!startDate || !endDate) {
+    if (!startDate) {
       toast({
         title: "Fehler",
-        description: "Bitte wählen Sie einen Zeitraum aus",
+        description: "Bitte wählen Sie ein Startdatum aus",
         variant: "destructive"
       });
       return;
@@ -135,7 +136,13 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ className }) => {
     // Add interpreter info
     doc.setFontSize(12);
     doc.text(`Dolmetscher: ${interpreter.name}`, 14, 32);
-    doc.text(`Zeitraum: ${format(startDate!, 'dd.MM.yyyy')} - ${format(endDate!, 'dd.MM.yyyy')}`, 14, 38);
+    
+    // Format date range text
+    const dateRangeText = endDate 
+      ? `Zeitraum: ${format(startDate!, 'dd.MM.yyyy')} - ${format(endDate, 'dd.MM.yyyy')}`
+      : `Zeitraum: Ab ${format(startDate!, 'dd.MM.yyyy')} bis heute`;
+    
+    doc.text(dateRangeText, 14, 38);
     
     // Add summary
     doc.setFontSize(11);
@@ -179,7 +186,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ className }) => {
       head: [['Kategorie', 'Anzahl', 'Dauer', 'Vergütung']],
       body: categoryTableData,
       theme: 'grid',
-      headStyles: { fillColor: [41, 128, 185] }
+      headStyles: { fillColor: [139, 92, 246] } // Updated color to match the app theme
     });
     
     const filename = `zusammenfassung_${interpreter.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
@@ -201,7 +208,13 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ className }) => {
     // Add interpreter info
     doc.setFontSize(12);
     doc.text(`Dolmetscher: ${interpreter.name}`, 14, 32);
-    doc.text(`Zeitraum: ${format(startDate!, 'dd.MM.yyyy')} - ${format(endDate!, 'dd.MM.yyyy')}`, 14, 38);
+    
+    // Format date range text
+    const dateRangeText = endDate 
+      ? `Zeitraum: ${format(startDate!, 'dd.MM.yyyy')} - ${format(endDate, 'dd.MM.yyyy')}`
+      : `Zeitraum: Ab ${format(startDate!, 'dd.MM.yyyy')} bis heute`;
+    
+    doc.text(dateRangeText, 14, 38);
     
     // Add summary
     doc.setFontSize(11);
@@ -241,7 +254,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ className }) => {
       startY: 70,
       theme: 'grid',
       styles: { fontSize: 10 },
-      headStyles: { fillColor: [41, 128, 185] }
+      headStyles: { fillColor: [139, 92, 246] } // Updated color to match the app theme
     });
     
     const filename = `detailbericht_${interpreter.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
@@ -272,8 +285,12 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ className }) => {
     doc.text(`Dolmetscher: ${interpreter.name}`, 14, 48);
     doc.text(`Email: ${interpreter.email}`, 14, 54);
     
-    // Add billing period
-    doc.text(`Abrechnungszeitraum: ${format(startDate!, 'dd.MM.yyyy')} - ${format(endDate!, 'dd.MM.yyyy')}`, 14, 64);
+    // Format date range text
+    const dateRangeText = endDate 
+      ? `Abrechnungszeitraum: ${format(startDate!, 'dd.MM.yyyy')} - ${format(endDate, 'dd.MM.yyyy')}`
+      : `Abrechnungszeitraum: Ab ${format(startDate!, 'dd.MM.yyyy')} bis heute`;
+    
+    doc.text(dateRangeText, 14, 64);
     
     // Add table with assignments
     const tableColumn = ['Datum', 'Klient', 'Kategorie', 'Stunden', 'Stundensatz', 'Betrag'];
@@ -305,7 +322,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ className }) => {
       startY: 70,
       theme: 'grid',
       styles: { fontSize: 10 },
-      headStyles: { fillColor: [41, 128, 185] }
+      headStyles: { fillColor: [139, 92, 246] } // Updated color to match the app theme
     });
     
     // Add total amount
@@ -328,32 +345,33 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ className }) => {
 
   return (
     <Card className={className}>
-      <CardHeader>
-        <CardTitle className="flex items-center">
-          <FileText className="mr-2 h-5 w-5 text-primary" />
+      <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-t-lg border-b border-purple-100">
+        <CardTitle className="flex items-center text-indigo-800">
+          <FileText className="mr-2 h-5 w-5 text-purple-600" />
           Berichte und Rechnungen
         </CardTitle>
         <CardDescription>
           Erstellen Sie Berichte und Rechnungen für einen bestimmten Zeitraum.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-1">
-          <label className="text-sm font-medium" htmlFor="interpreter-select">
+      
+      <CardContent className="space-y-5 pt-5">
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-700" htmlFor="interpreter-select">
             Dolmetscher auswählen
           </label>
           <Select 
             value={selectedInterpreter} 
             onValueChange={setSelectedInterpreter}
           >
-            <SelectTrigger id="interpreter-select">
+            <SelectTrigger id="interpreter-select" className="bg-white border-purple-200 hover:border-purple-300">
               <SelectValue placeholder="Dolmetscher auswählen" />
             </SelectTrigger>
             <SelectContent>
               {interpreters.map(interpreter => (
                 <SelectItem key={interpreter.id} value={interpreter.id}>
                   <div className="flex items-center">
-                    <Users className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <Users className="mr-2 h-4 w-4 text-purple-500" />
                     {interpreter.name}
                   </div>
                 </SelectItem>
@@ -363,88 +381,103 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ className }) => {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="text-sm font-medium" htmlFor="start-date">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700" htmlFor="start-date">
               Startdatum
             </label>
             <div className="relative">
-              <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-purple-400" />
               <input 
                 id="start-date"
                 type="date" 
-                className="w-full pl-10 pr-3 py-2 rounded-md border border-border text-sm"
+                className="w-full pl-10 pr-3 py-2 rounded-md border border-purple-200 hover:border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-sm"
                 value={startDate ? format(startDate, 'yyyy-MM-dd') : ''}
                 onChange={(e) => setStartDate(e.target.value ? new Date(e.target.value) : null)}
               />
             </div>
           </div>
           
-          <div className="space-y-1">
-            <label className="text-sm font-medium" htmlFor="end-date">
-              Enddatum
-            </label>
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <label className="text-sm font-medium text-slate-700" htmlFor="end-date">
+                Enddatum
+              </label>
+              <span className="text-xs text-slate-500">(optional)</span>
+            </div>
             <div className="relative">
-              <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <CalendarRange className="absolute left-3 top-2.5 h-4 w-4 text-purple-400" />
               <input 
                 id="end-date"
                 type="date" 
-                className="w-full pl-10 pr-3 py-2 rounded-md border border-border text-sm"
+                className="w-full pl-10 pr-3 py-2 rounded-md border border-purple-200 hover:border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-sm"
                 value={endDate ? format(endDate, 'yyyy-MM-dd') : ''}
                 onChange={(e) => setEndDate(e.target.value ? new Date(e.target.value) : null)}
+                placeholder="Bis heute"
               />
             </div>
+            {!endDate && (
+              <div className="text-xs text-slate-500 ml-1 mt-1">
+                Ohne Enddatum werden alle Einsätze bis heute berücksichtigt
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="space-y-1">
-          <label className="text-sm font-medium">
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-700">
             Berichtstyp
           </label>
           <div className="grid grid-cols-3 gap-2">
             <Button
               variant={reportType === "summary" ? "default" : "outline"}
-              className="justify-start"
+              className={reportType === "summary" 
+                ? "justify-start bg-purple-600 hover:bg-purple-700" 
+                : "justify-start border-purple-200 hover:border-purple-300 text-slate-700"}
               onClick={() => setReportType("summary")}
             >
-              <FileText className="mr-2 h-4 w-4" />
+              <FileText className={`mr-2 h-4 w-4 ${reportType === "summary" ? "text-white" : "text-purple-500"}`} />
               Zusammenfassung
             </Button>
             <Button
               variant={reportType === "detailed" ? "default" : "outline"}
-              className="justify-start"
+              className={reportType === "detailed" 
+                ? "justify-start bg-purple-600 hover:bg-purple-700" 
+                : "justify-start border-purple-200 hover:border-purple-300 text-slate-700"}
               onClick={() => setReportType("detailed")}
             >
-              <ArrowRight className="mr-2 h-4 w-4" />
+              <ArrowRight className={`mr-2 h-4 w-4 ${reportType === "detailed" ? "text-white" : "text-purple-500"}`} />
               Detailliert
             </Button>
             <Button
               variant={reportType === "invoice" ? "default" : "outline"}
-              className="justify-start"
+              className={reportType === "invoice" 
+                ? "justify-start bg-purple-600 hover:bg-purple-700" 
+                : "justify-start border-purple-200 hover:border-purple-300 text-slate-700"}
               onClick={() => setReportType("invoice")}
             >
-              <Printer className="mr-2 h-4 w-4" />
+              <Printer className={`mr-2 h-4 w-4 ${reportType === "invoice" ? "text-white" : "text-purple-500"}`} />
               Rechnung
             </Button>
           </div>
         </div>
 
-        {selectedInterpreter && startDate && endDate && (
+        {selectedInterpreter && startDate && (
           <>
-            <Separator />
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium">Vorschau:</h3>
+            <Separator className="bg-purple-100" />
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-slate-700">Vorschau:</h3>
               <div className="grid grid-cols-3 gap-4">
-                <div className="bg-secondary/50 p-3 rounded-md text-center">
-                  <p className="text-sm text-muted-foreground">Einsätze</p>
-                  <p className="text-lg font-bold">{filteredAssignments.length}</p>
+                <div className="bg-gradient-to-b from-purple-50 to-indigo-50 p-3 rounded-md text-center border border-purple-100">
+                  <p className="text-sm text-indigo-600 font-medium">Einsätze</p>
+                  <p className="text-xl font-bold text-indigo-800">{filteredAssignments.length}</p>
                 </div>
-                <div className="bg-secondary/50 p-3 rounded-md text-center">
-                  <p className="text-sm text-muted-foreground">Dauer</p>
-                  <p className="text-lg font-bold">{(totalMinutes / 60).toFixed(1)}h</p>
+                <div className="bg-gradient-to-b from-indigo-50 to-purple-50 p-3 rounded-md text-center border border-indigo-100">
+                  <p className="text-sm text-indigo-600 font-medium">Dauer</p>
+                  <p className="text-xl font-bold text-indigo-800">{(totalMinutes / 60).toFixed(1)}h</p>
                 </div>
-                <div className="bg-secondary/50 p-3 rounded-md text-center">
-                  <p className="text-sm text-muted-foreground">Vergütung</p>
-                  <p className="text-lg font-bold">€{totalEarnings.toFixed(2)}</p>
+                <div className="bg-gradient-to-b from-purple-50 to-indigo-50 p-3 rounded-md text-center border border-purple-100">
+                  <p className="text-sm text-indigo-600 font-medium">Vergütung</p>
+                  <p className="text-xl font-bold text-indigo-800">€{totalEarnings.toFixed(2)}</p>
                 </div>
               </div>
             </div>
@@ -452,11 +485,11 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ className }) => {
         )}
       </CardContent>
 
-      <CardFooter>
+      <CardFooter className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-b-lg border-t border-purple-100">
         <Button 
-          className="w-full" 
+          className="w-full bg-purple-600 hover:bg-purple-700" 
           onClick={generateReport}
-          disabled={!selectedInterpreter || !startDate || !endDate}
+          disabled={!selectedInterpreter || !startDate}
         >
           {reportType === "invoice" ? (
             <>

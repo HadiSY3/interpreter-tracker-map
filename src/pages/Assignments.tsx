@@ -21,13 +21,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import AssignmentForm from '@/components/AssignmentForm';
-import { Assignment, calculateEarnings, formatDate, formatTime } from '@/lib/types';
+import { Assignment, calculateDuration, formatDate, formatTime } from '@/lib/types';
 import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/lib/utils';
 import { useData } from '@/contexts/DataContext';
 
 const Assignments = () => {
-  const { assignments, setAssignments } = useData();
+  const { assignments, setAssignments, categories } = useData();
   const [showForm, setShowForm] = useState(false);
   const [editAssignment, setEditAssignment] = useState<Assignment | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState('');
@@ -67,6 +67,22 @@ const Assignments = () => {
     setShowForm(true);
   };
 
+  // Get current category rates
+  const getCategoryRate = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category || null;
+  };
+
+  // Calculate earnings using current rates
+  const calculateEarnings = (assignment: Assignment): number => {
+    const durationMinutes = calculateDuration(assignment);
+    const currentCategory = getCategoryRate(assignment.category.id);
+    if (currentCategory) {
+      return parseFloat((durationMinutes * currentCategory.minuteRate).toFixed(2));
+    }
+    return parseFloat((durationMinutes * assignment.category.minuteRate).toFixed(2));
+  };
+
   const filteredAssignments = assignments.filter(assignment => 
     assignment.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     assignment.location.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -93,7 +109,7 @@ const Assignments = () => {
             </div>
             <Button 
               onClick={() => setShowForm(true)}
-              className="bg-primary hover:bg-primary/90 shadow"
+              className="bg-purple-600 hover:bg-purple-700 shadow"
             >
               <Plus className="mr-2 h-4 w-4" />
               Neuer Einsatz
@@ -107,7 +123,7 @@ const Assignments = () => {
                 placeholder="Suchen..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-10"
+                className="pl-10 pr-10 border-purple-200 focus:border-purple-400"
               />
               {searchTerm && (
                 <button
@@ -119,17 +135,17 @@ const Assignments = () => {
               )}
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
-              <Button variant="outline" size="icon" className="h-10 w-10">
-                <Filter className="h-5 w-5" />
+              <Button variant="outline" size="icon" className="h-10 w-10 border-purple-200 hover:bg-purple-50 hover:border-purple-300">
+                <Filter className="h-5 w-5 text-purple-500" />
               </Button>
-              <Button variant="outline" size="icon" className="h-10 w-10">
-                <Download className="h-5 w-5" />
+              <Button variant="outline" size="icon" className="h-10 w-10 border-purple-200 hover:bg-purple-50 hover:border-purple-300">
+                <Download className="h-5 w-5 text-purple-500" />
               </Button>
             </div>
           </div>
 
-          <Card className="border border-border/50 shadow-sm">
-            <CardHeader className="pb-3">
+          <Card className="border border-purple-100 shadow-sm">
+            <CardHeader className="pb-3 bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-purple-100">
               <CardTitle>Einsatzübersicht</CardTitle>
               <CardDescription>
                 {filteredAssignments.length} Einsätze gefunden
@@ -144,19 +160,19 @@ const Assignments = () => {
                       <Button 
                         variant="outline" 
                         onClick={() => setSearchTerm('')} 
-                        className="mt-2"
+                        className="mt-2 border-purple-200 text-purple-600 hover:bg-purple-50"
                       >
                         Filter zurücksetzen
                       </Button>
                     </>
                   ) : (
                     <>
-                      <Calendar className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                      <Calendar className="h-12 w-12 mx-auto mb-3 text-purple-300" />
                       <p className="mb-1">Keine Einsätze vorhanden</p>
                       <p className="text-sm mb-3">Legen Sie einen neuen Einsatz an, um zu beginnen.</p>
                       <Button 
                         onClick={() => setShowForm(true)} 
-                        className="bg-primary hover:bg-primary/90"
+                        className="bg-purple-600 hover:bg-purple-700"
                       >
                         <Plus className="mr-2 h-4 w-4" />
                         Neuer Einsatz
@@ -168,7 +184,7 @@ const Assignments = () => {
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow>
+                      <TableRow className="bg-purple-50/50">
                         <TableHead>Klient</TableHead>
                         <TableHead>Datum & Zeit</TableHead>
                         <TableHead>Ort</TableHead>
@@ -187,7 +203,7 @@ const Assignments = () => {
                         const durationText = `${hours > 0 ? `${hours}h ` : ''}${minutes}min`;
                         
                         return (
-                          <TableRow key={assignment.id} className="group">
+                          <TableRow key={assignment.id} className="group hover:bg-purple-50/30">
                             <TableCell className="font-medium">{assignment.clientName}</TableCell>
                             <TableCell>
                               <div className="flex flex-col">
@@ -199,14 +215,14 @@ const Assignments = () => {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center">
-                                <Badge variant="outline" className="bg-secondary/50 text-xs">
+                                <Badge variant="outline" className="bg-indigo-50 text-xs border-indigo-200 text-indigo-600">
                                   {assignment.location.name.split(' ')[0]}
                                 </Badge>
                               </div>
                             </TableCell>
                             <TableCell>
                               {assignment.interpreter ? (
-                                <Badge className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">
+                                <Badge className="bg-purple-100 text-purple-600 border-purple-200 hover:bg-purple-200">
                                   {assignment.interpreter.name}
                                 </Badge>
                               ) : (
@@ -215,7 +231,7 @@ const Assignments = () => {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center">
-                                <Clock className="mr-1 h-3 w-3 text-muted-foreground" />
+                                <Clock className="mr-1 h-3 w-3 text-purple-400" />
                                 <span>{durationText}</span>
                               </div>
                             </TableCell>
@@ -227,7 +243,7 @@ const Assignments = () => {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleEditClick(assignment)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-purple-600 hover:text-purple-700 hover:bg-purple-50"
                               >
                                 Bearbeiten
                               </Button>
