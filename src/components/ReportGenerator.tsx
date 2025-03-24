@@ -14,6 +14,7 @@ import { useData } from '@/contexts/DataContext';
 import { Assignment, calculateDuration } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 
 interface ReportGeneratorProps {
   className?: string;
@@ -25,6 +26,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ className }) => {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [reportType, setReportType] = useState<"summary" | "detailed" | "invoice">("summary");
+  const [includePaidAssignments, setIncludePaidAssignments] = useState<boolean>(false);
 
   // Get current category rates
   const getCategoryRate = (categoryId: string) => {
@@ -32,7 +34,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ className }) => {
     return category || null;
   };
 
-  // Filter assignments based on selected interpreter and date range
+  // Filter assignments based on selected interpreter, date range, and payment status
   const filteredAssignments = React.useMemo(() => {
     let filtered = assignments;
     
@@ -43,17 +45,32 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ className }) => {
     }
     
     if (startDate) {
-      filtered = filtered.filter(a => a.startTime >= startDate);
+      // Make start date inclusive by using start of day
+      filtered = filtered.filter(a => {
+        const assignmentDate = new Date(a.startTime);
+        const startDateToCompare = new Date(startDate);
+        
+        // Set both to start of day for date-only comparison
+        assignmentDate.setHours(0, 0, 0, 0);
+        startDateToCompare.setHours(0, 0, 0, 0);
+        
+        return assignmentDate >= startDateToCompare;
+      });
     }
     
     if (endDate) {
-      // Make end date inclusive by setting it to end of day
+      // Make end date inclusive by using end of day
       const endOfDayDate = endOfDay(endDate);
       filtered = filtered.filter(a => a.startTime <= endOfDayDate);
     }
     
+    // Filter out paid assignments for reports if not explicitly included
+    if (reportType === "invoice" && !includePaidAssignments) {
+      filtered = filtered.filter(a => !a.paid);
+    }
+    
     return filtered;
-  }, [assignments, selectedInterpreter, startDate, endDate]);
+  }, [assignments, selectedInterpreter, startDate, endDate, reportType, includePaidAssignments]);
 
   // Calculate total earnings with current rates
   const totalEarnings = React.useMemo(() => {
@@ -461,6 +478,19 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ className }) => {
           </div>
         </div>
 
+        {reportType === "invoice" && (
+          <div className="flex items-center space-x-2 bg-amber-50 p-3 rounded-md border border-amber-100">
+            <Switch 
+              id="paid-switch"
+              checked={includePaidAssignments}
+              onCheckedChange={setIncludePaidAssignments}
+            />
+            <label htmlFor="paid-switch" className="text-sm font-medium text-amber-800 cursor-pointer">
+              Bereits bezahlte Einsätze in die Rechnung einbeziehen?
+            </label>
+          </div>
+        )}
+
         {selectedInterpreter && startDate && (
           <>
             <Separator className="bg-purple-100" />
@@ -480,6 +510,13 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ className }) => {
                   <p className="text-xl font-bold text-indigo-800">€{totalEarnings.toFixed(2)}</p>
                 </div>
               </div>
+              
+              {reportType === "invoice" && !includePaidAssignments && filteredAssignments.length === 0 && (
+                <div className="bg-yellow-50 p-3 rounded-md text-center border border-yellow-100 text-yellow-800">
+                  <p className="text-sm">Keine unbezahlten Einsätze im ausgewählten Zeitraum gefunden.</p>
+                  <p className="text-xs mt-1">Aktivieren Sie die Option "Bereits bezahlte Einsätze einbeziehen", um alle Einsätze anzuzeigen.</p>
+                </div>
+              )}
             </div>
           </>
         )}
@@ -489,7 +526,7 @@ const ReportGenerator: React.FC<ReportGeneratorProps> = ({ className }) => {
         <Button 
           className="w-full bg-purple-600 hover:bg-purple-700" 
           onClick={generateReport}
-          disabled={!selectedInterpreter || !startDate}
+          disabled={!selectedInterpreter || !startDate || filteredAssignments.length === 0}
         >
           {reportType === "invoice" ? (
             <>
