@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Server, AlertTriangle } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
 import { toast } from '@/components/ui/use-toast';
+import { testApiConnection } from '@/lib/database';
 
 interface SyncDatabaseButtonProps {
   className?: string;
@@ -11,10 +12,29 @@ interface SyncDatabaseButtonProps {
 
 const SyncDatabaseButton: React.FC<SyncDatabaseButtonProps> = ({ className }) => {
   const { syncWithDatabase, isLoading } = useData();
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
 
   const handleSync = async () => {
     try {
+      // First test connection to API
+      setIsTestingConnection(true);
+      console.log("Testing API connection...");
+      const connected = await testApiConnection();
+      setIsTestingConnection(false);
+      
+      if (!connected) {
+        console.error("API connection test failed");
+        toast({
+          title: "Verbindung fehlgeschlagen",
+          description: "Verbindung zur API konnte nicht hergestellt werden. Überprüfen Sie XAMPP und die API-Pfade in database.ts.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      console.log("API connection successful, starting sync...");
       const success = await syncWithDatabase();
+      
       if (success) {
         toast({
           title: "Synchronisierung erfolgreich",
@@ -28,6 +48,7 @@ const SyncDatabaseButton: React.FC<SyncDatabaseButtonProps> = ({ className }) =>
         });
       }
     } catch (error) {
+      setIsTestingConnection(false);
       toast({
         title: "Synchronisierungsfehler",
         description: `Fehler bei der Synchronisierung: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
@@ -40,13 +61,27 @@ const SyncDatabaseButton: React.FC<SyncDatabaseButtonProps> = ({ className }) =>
   return (
     <Button
       onClick={handleSync}
-      disabled={isLoading}
+      disabled={isLoading || isTestingConnection}
       variant="outline"
       size="sm"
       className={className}
     >
-      <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-      {isLoading ? 'Synchronisiere...' : 'Mit Datenbank synchronisieren'}
+      {isTestingConnection ? (
+        <>
+          <Server className="h-4 w-4 mr-2 text-orange-500" />
+          Teste Verbindung...
+        </>
+      ) : isLoading ? (
+        <>
+          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+          Synchronisiere...
+        </>
+      ) : (
+        <>
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Mit Datenbank synchronisieren
+        </>
+      )}
     </Button>
   );
 };
