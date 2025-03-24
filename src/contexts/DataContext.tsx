@@ -33,7 +33,7 @@ interface DataContextType {
   deleteCategory: (categoryId: string) => void;
   deleteLocation: (locationId: string) => void;
   isLoading: boolean;
-  syncWithDatabase: () => Promise<void>;
+  syncWithDatabase: () => Promise<boolean>;
   updateAssignmentPaidStatus: (assignmentId: string, paid: boolean) => Promise<void>;
 }
 
@@ -56,9 +56,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   // Function to sync with database
-  const syncWithDatabase = async () => {
+  const syncWithDatabase = async (): Promise<boolean> => {
     setIsLoading(true);
     try {
+      console.log("Starte Datenbankverbindung...");
+      
       // Fetch all data from the database
       const [assignmentsData, categoriesData, locationsData, interpretersData] = await Promise.all([
         fetchAssignmentsFromDB(),
@@ -67,23 +69,40 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         fetchInterpretersFromDB()
       ]);
 
-      // Update state with fetched data, falling back to initial data if null
-      if (categoriesData) setCategories(categoriesData);
-      if (locationsData) setLocations(locationsData);
-      if (assignmentsData) setAssignments(assignmentsData);
-      if (interpretersData) setInterpreters(interpretersData);
-      
-      toast({
-        title: "Daten synchronisiert",
-        description: "Die Daten wurden erfolgreich mit der Datenbank synchronisiert."
+      console.log("DB-Daten erhalten:", {
+        assignments: assignmentsData ? assignmentsData.length : 0,
+        categories: categoriesData ? categoriesData.length : 0, 
+        locations: locationsData ? locationsData.length : 0,
+        interpreters: interpretersData ? interpretersData.length : 0
       });
+
+      let dataUpdated = false;
+
+      // Update state with fetched data, falling back to initial data if null
+      if (categoriesData) {
+        setCategories(categoriesData.length > 0 ? categoriesData : categories);
+        dataUpdated = dataUpdated || categoriesData.length > 0;
+      }
+      
+      if (locationsData) {
+        setLocations(locationsData.length > 0 ? locationsData : locations);
+        dataUpdated = dataUpdated || locationsData.length > 0;
+      }
+      
+      if (assignmentsData) {
+        setAssignments(assignmentsData.length > 0 ? assignmentsData : assignments);
+        dataUpdated = dataUpdated || assignmentsData.length > 0;
+      }
+      
+      if (interpretersData) {
+        setInterpreters(interpretersData.length > 0 ? interpretersData : interpreters);
+        dataUpdated = dataUpdated || interpretersData.length > 0;
+      }
+      
+      return true;
     } catch (error) {
       console.error("Error syncing with database:", error);
-      toast({
-        title: "Synchronisierungsfehler",
-        description: "Die Daten konnten nicht mit der Datenbank synchronisiert werden. Fallback auf lokale Daten.",
-        variant: "destructive"
-      });
+      return false;
     } finally {
       setIsLoading(false);
     }
