@@ -12,9 +12,12 @@ import { Toaster } from './components/ui/toaster';
 import { DataProvider } from './contexts/DataContext';
 
 function App() {
+  // Basispfad für das Routing
+  const basePath = '/interpreter-app';
+
   return (
     <DataProvider>
-      <Router>
+      <Router basename={basePath}>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/assignments" element={<Assignments />} />

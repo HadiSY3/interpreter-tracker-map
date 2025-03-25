@@ -23,8 +23,19 @@ const handleFetchError = (error: any, errorMessage: string) => {
 // Function to test API connection
 export const testApiConnection = async (): Promise<boolean> => {
   try {
+    // Log request attempt for debugging
+    console.log("Testing API connection at:", window.location.origin + '/interpreter-app/interpreter-api/get-categories.php');
+    
     // Try to fetch categories as a simple test
     const response = await fetch('/interpreter-app/interpreter-api/get-categories.php');
+    
+    if (!response.ok) {
+      console.error("API test failed with status:", response.status);
+      // Try to log response text for debugging
+      const text = await response.text();
+      console.error("Response text:", text);
+    }
+    
     return response.ok;
   } catch (error) {
     console.error('API connection test failed:', error);
@@ -40,7 +51,6 @@ export const saveAssignmentToDB = async (assignment: Assignment): Promise<boolea
       ...assignment,
       startTime: assignment.startTime.toISOString(),
       endTime: assignment.endTime.toISOString()
-      // Removed date property as it doesn't exist in the Assignment type
     };
 
     // Add the correct base path to the API URL
@@ -67,6 +77,8 @@ export const saveAssignmentToDB = async (assignment: Assignment): Promise<boolea
 // Function to fetch assignments from the database
 export const fetchAssignmentsFromDB = async (): Promise<Assignment[] | null> => {
   try {
+    console.log("Fetching assignments from:", window.location.origin + '/interpreter-app/interpreter-api/get-assignments.php');
+    
     // Add the correct base path to the API URL
     const response = await fetch('/interpreter-app/interpreter-api/get-assignments.php');
     
@@ -81,7 +93,6 @@ export const fetchAssignmentsFromDB = async (): Promise<Assignment[] | null> => 
       ...assignment,
       startTime: new Date(assignment.startTime),
       endTime: new Date(assignment.endTime)
-      // Removed date conversion as it's not in the Assignment type
     }));
   } catch (error) {
     handleFetchError(error, 'Error Abrufen der Einsätze:');
@@ -116,6 +127,8 @@ export const updateAssignmentPaymentStatus = async (assignmentId: string, paid: 
 // Function to fetch categories from the database
 export const fetchCategoriesFromDB = async (): Promise<Category[] | null> => {
   try {
+    console.log("Fetching categories from:", window.location.origin + '/interpreter-app/interpreter-api/get-categories.php');
+    
     // Add the correct base path to the API URL
     const response = await fetch('/interpreter-app/interpreter-api/get-categories.php');
     
@@ -133,6 +146,8 @@ export const fetchCategoriesFromDB = async (): Promise<Category[] | null> => {
 // Function to fetch locations from the database
 export const fetchLocationsFromDB = async (): Promise<Location[] | null> => {
   try {
+    console.log("Fetching locations from:", window.location.origin + '/interpreter-app/interpreter-api/get-locations.php');
+    
     // Add the correct base path to the API URL
     const response = await fetch('/interpreter-app/interpreter-api/get-locations.php');
     
@@ -150,6 +165,8 @@ export const fetchLocationsFromDB = async (): Promise<Location[] | null> => {
 // Function to fetch interpreters from the database
 export const fetchInterpretersFromDB = async (): Promise<Interpreter[] | null> => {
   try {
+    console.log("Fetching interpreters from:", window.location.origin + '/interpreter-app/interpreter-api/get-interpreters.php');
+    
     // Add the correct base path to the API URL
     const response = await fetch('/interpreter-app/interpreter-api/get-interpreters.php');
     
@@ -159,7 +176,6 @@ export const fetchInterpretersFromDB = async (): Promise<Interpreter[] | null> =
     
     return await response.json();
   } catch (error) {
-    // Fixed the extra parameter issue - removed the third argument
     handleFetchError(error, 'Error Abrufen der Dolmetscher:');
     return null;
   }
