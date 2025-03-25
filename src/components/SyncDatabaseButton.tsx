@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Server, AlertTriangle, Database } from 'lucide-react';
+import { RefreshCw, Server, Database } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
 import { toast } from '@/components/ui/use-toast';
 import { testApiConnection } from '@/lib/database';

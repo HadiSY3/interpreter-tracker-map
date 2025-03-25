@@ -20,6 +20,18 @@ const handleFetchError = (error: any, errorMessage: string) => {
   return null;
 };
 
+// Function to test API connection
+export const testApiConnection = async (): Promise<boolean> => {
+  try {
+    // Try to fetch categories as a simple test
+    const response = await fetch('/interpreter-app/interpreter-api/get-categories.php');
+    return response.ok;
+  } catch (error) {
+    console.error('API connection test failed:', error);
+    return false;
+  }
+};
+
 // Function to save an assignment to the database
 export const saveAssignmentToDB = async (assignment: Assignment): Promise<boolean> => {
   try {
@@ -27,8 +39,8 @@ export const saveAssignmentToDB = async (assignment: Assignment): Promise<boolea
     const assignmentData = {
       ...assignment,
       startTime: assignment.startTime.toISOString(),
-      endTime: assignment.endTime.toISOString(),
-      date: assignment.date.toISOString()
+      endTime: assignment.endTime.toISOString()
+      // Removed date property as it doesn't exist in the Assignment type
     };
 
     // Add the correct base path to the API URL
@@ -68,8 +80,8 @@ export const fetchAssignmentsFromDB = async (): Promise<Assignment[] | null> => 
     return data.map((assignment: any) => ({
       ...assignment,
       startTime: new Date(assignment.startTime),
-      endTime: new Date(assignment.endTime),
-      date: new Date(assignment.date),
+      endTime: new Date(assignment.endTime)
+      // Removed date conversion as it's not in the Assignment type
     }));
   } catch (error) {
     handleFetchError(error, 'Error Abrufen der Einsätze:');
@@ -147,7 +159,8 @@ export const fetchInterpretersFromDB = async (): Promise<Interpreter[] | null> =
     
     return await response.json();
   } catch (error) {
-    handleFetchError(error, 'Error Abrufen der Dolmetscher:', error);
+    // Fixed the extra parameter issue - removed the third argument
+    handleFetchError(error, 'Error Abrufen der Dolmetscher:');
     return null;
   }
 };
