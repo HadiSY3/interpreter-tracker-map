@@ -6,7 +6,7 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: "/interpreter-app/", // Add base path for proper deployment in XAMPP
+  base: "/interpreter-app/", // Ensure base path is correctly set for XAMPP deployment
   server: {
     host: "::",
     port: 8080,
@@ -24,7 +24,6 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: "dist",
     sourcemap: true,
-    // Ensure assets are correctly referenced
     assetsDir: "assets",
   }
 }));

@@ -1,149 +1,87 @@
 
 import { Assignment, Category, Location, Interpreter } from './types';
-import { toast } from '@/components/ui/use-toast';
 
-// Database configuration
-const DB_CONFIG = {
-  host: 'localhost',  // Change if your MySQL server is on a different machine
-  database: 'interpreter_tracker', // The name of your database
-  port: 3306, // Default MySQL port
-  // You'll need to create a user with proper permissions in your MySQL setup
-  user: 'interpreter_user',
-  password: 'your_secure_password'
-};
-
-// Helper function to build API URLs
-const buildApiUrl = (endpoint: string): string => {
-  // For local development on the same machine
-  // Die URL wurde angepasst für XAMPP-Deployment
-  return `${window.location.protocol}//${window.location.hostname}/interpreter-api/${endpoint}.php`;
-};
-
-// Debug function to test API connection
-export const testApiConnection = async (): Promise<boolean> => {
-  try {
-    const apiUrl = buildApiUrl('get-categories');
-    console.log("Testing API connection to:", apiUrl);
-    
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      // Add a timeout to fail fast in case of connection issues
-      signal: AbortSignal.timeout(5000),
-      // Disable caching for test requests
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
-    });
-    
-    console.log("API response status:", response.status);
-    
-    if (response.ok) {
-      try {
-        const data = await response.json();
-        console.log("API connection successful, received data:", data);
-        return true;
-      } catch (jsonError) {
-        console.error("API returned invalid JSON:", jsonError);
-        return false;
-      }
-    }
-    
-    return false;
-  } catch (error) {
-    console.error("API connection test failed:", error);
-    return false;
-  }
-};
-
-// Generic function to handle fetch errors
-const handleFetchError = (error: any, actionName: string) => {
-  console.error(`Error ${actionName}:`, error);
+// Helper function to handle fetch errors
+const handleFetchError = (error: any, errorMessage: string) => {
+  console.error(errorMessage, error);
   
-  // Provide more detailed error information
+  // Extract more detailed error information if available
   let errorDetails = '';
-  if (error instanceof TypeError && error.message === 'Failed to fetch') {
-    errorDetails = 'Netzwerkfehler: Stellen Sie sicher, dass XAMPP läuft und die PHP-API erreichbar ist.';
+  if (error instanceof Response) {
+    errorDetails = `Server responded with status: ${error.status}`;
   } else if (error instanceof Error) {
     errorDetails = error.message;
   }
   
-  toast({
-    title: `Fehler beim ${actionName}`,
-    description: errorDetails || 'Ein unbekannter Fehler ist aufgetreten.',
-    variant: "destructive"
-  });
+  if (errorDetails) {
+    console.error('Error details:', errorDetails);
+  }
   
   return null;
 };
 
-// Assignments API functions
-export const fetchAssignmentsFromDB = async (): Promise<Assignment[] | null> => {
-  try {
-    const apiUrl = buildApiUrl('get-assignments');
-    console.log("Fetching assignments from:", apiUrl);
-    
-    const response = await fetch(apiUrl, {
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
-    });
-    
-    if (!response.ok) {
-      console.error(`Server responded with status: ${response.status}`);
-      const errorText = await response.text();
-      console.error("Error details:", errorText);
-      throw new Error(`Server responded with status: ${response.status} - ${errorText}`);
-    }
-    
-    const data = await response.json();
-    console.log(`Fetched ${data.length} assignments from DB`);
-    
-    // Transform dates from strings to Date objects
-    const assignments = data.map((assignment: any) => ({
-      ...assignment,
-      startTime: new Date(assignment.startTime),
-      endTime: new Date(assignment.endTime)
-    }));
-    
-    return assignments;
-  } catch (error) {
-    return handleFetchError(error, 'Abrufen der Einsätze');
-  }
-};
-
+// Function to save an assignment to the database
 export const saveAssignmentToDB = async (assignment: Assignment): Promise<boolean> => {
   try {
-    console.log("Saving assignment to DB:", assignment.id);
-    const response = await fetch(buildApiUrl('save-assignment'), {
+    // Convert dates to strings for transmission
+    const assignmentData = {
+      ...assignment,
+      startTime: assignment.startTime.toISOString(),
+      endTime: assignment.endTime.toISOString(),
+      date: assignment.date.toISOString()
+    };
+
+    // Add the correct base path to the API URL
+    const response = await fetch('/interpreter-app/interpreter-api/save-assignment.php', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(assignment),
+      body: JSON.stringify(assignmentData),
     });
-    
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Error details:", errorText);
-      throw new Error(`Server responded with status: ${response.status} - ${errorText}`);
+      throw new Error(`Server responded with status: ${response.status} - ${await response.text()}`);
     }
-    
-    const result = await response.json();
-    console.log("Save assignment result:", result);
-    return true;
+
+    const data = await response.json();
+    return data.success === true;
   } catch (error) {
-    handleFetchError(error, 'Speichern des Einsatzes');
-    return false;
+    handleFetchError(error, 'Error saving assignment:');
+    throw error; // Re-throw to allow component to handle the error
   }
 };
 
+// Function to fetch assignments from the database
+export const fetchAssignmentsFromDB = async (): Promise<Assignment[] | null> => {
+  try {
+    // Add the correct base path to the API URL
+    const response = await fetch('/interpreter-app/interpreter-api/get-assignments.php');
+    
+    if (!response.ok) {
+      throw new Error(`Server responded with status: ${response.status} - ${await response.text()}`);
+    }
+    
+    const data = await response.json();
+    
+    // Convert string dates back to Date objects
+    return data.map((assignment: any) => ({
+      ...assignment,
+      startTime: new Date(assignment.startTime),
+      endTime: new Date(assignment.endTime),
+      date: new Date(assignment.date),
+    }));
+  } catch (error) {
+    handleFetchError(error, 'Error Abrufen der Einsätze:');
+    return null;
+  }
+};
+
+// Function to update assignment payment status
 export const updateAssignmentPaymentStatus = async (assignmentId: string, paid: boolean): Promise<boolean> => {
   try {
-    const response = await fetch(buildApiUrl('update-payment-status'), {
+    // Add the correct base path to the API URL
+    const response = await fetch('/interpreter-app/interpreter-api/update-payment-status.php', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -152,99 +90,64 @@ export const updateAssignmentPaymentStatus = async (assignmentId: string, paid: 
     });
     
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Server responded with status: ${response.status} - ${errorText}`);
+      throw new Error(`Server responded with status: ${response.status} - ${await response.text()}`);
     }
-    return true;
+    
+    const data = await response.json();
+    return data.success === true;
   } catch (error) {
-    handleFetchError(error, 'Aktualisieren des Zahlungsstatus');
+    handleFetchError(error, 'Error updating payment status:');
     return false;
   }
 };
 
-// Similar functions for categories, locations, and interpreters
+// Function to fetch categories from the database
 export const fetchCategoriesFromDB = async (): Promise<Category[] | null> => {
   try {
-    const apiUrl = buildApiUrl('get-categories');
-    console.log("Fetching categories from:", apiUrl);
-    
-    const response = await fetch(apiUrl, {
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
-    });
+    // Add the correct base path to the API URL
+    const response = await fetch('/interpreter-app/interpreter-api/get-categories.php');
     
     if (!response.ok) {
-      console.error(`Server responded with status: ${response.status}`);
-      const errorText = await response.text();
-      console.error("Error details:", errorText);
-      throw new Error(`Server responded with status: ${response.status} - ${errorText}`);
+      throw new Error(`Server responded with status: ${response.status} - ${await response.text()}`);
     }
     
-    const data = await response.json();
-    console.log(`Fetched ${data.length} categories from DB`);
-    return data;
+    return await response.json();
   } catch (error) {
-    return handleFetchError(error, 'Abrufen der Kategorien');
+    handleFetchError(error, 'Error Abrufen der Kategorien:');
+    return null;
   }
 };
 
+// Function to fetch locations from the database
 export const fetchLocationsFromDB = async (): Promise<Location[] | null> => {
   try {
-    const apiUrl = buildApiUrl('get-locations');
-    console.log("Fetching locations from:", apiUrl);
-    
-    const response = await fetch(apiUrl, {
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
-    });
+    // Add the correct base path to the API URL
+    const response = await fetch('/interpreter-app/interpreter-api/get-locations.php');
     
     if (!response.ok) {
-      console.error(`Server responded with status: ${response.status}`);
-      const errorText = await response.text();
-      console.error("Error details:", errorText);
-      throw new Error(`Server responded with status: ${response.status} - ${errorText}`);
+      throw new Error(`Server responded with status: ${response.status} - ${await response.text()}`);
     }
     
-    const data = await response.json();
-    console.log(`Fetched ${data.length} locations from DB`);
-    return data;
+    return await response.json();
   } catch (error) {
-    return handleFetchError(error, 'Abrufen der Orte');
+    handleFetchError(error, 'Error Abrufen der Orte:');
+    return null;
   }
 };
 
+// Function to fetch interpreters from the database
 export const fetchInterpretersFromDB = async (): Promise<Interpreter[] | null> => {
   try {
-    const apiUrl = buildApiUrl('get-interpreters');
-    console.log("Fetching interpreters from:", apiUrl);
-    
-    const response = await fetch(apiUrl, {
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
-    });
+    // Add the correct base path to the API URL
+    const response = await fetch('/interpreter-app/interpreter-api/get-interpreters.php');
     
     if (!response.ok) {
-      console.error(`Server responded with status: ${response.status}`);
-      const errorText = await response.text();
-      console.error("Error details:", errorText);
-      throw new Error(`Server responded with status: ${response.status} - ${errorText}`);
+      throw new Error(`Server responded with status: ${response.status} - ${await response.text()}`);
     }
     
-    const data = await response.json();
-    console.log(`Fetched ${data.length} interpreters from DB`);
-    return data;
+    return await response.json();
   } catch (error) {
-    return handleFetchError(error, 'Abrufen der Dolmetscher');
+    handleFetchError(error, 'Error Abrufen der Dolmetscher:', error);
+    return null;
   }
 };
-
-// You can add more functions for saving/updating categories, locations, and interpreters as needed
