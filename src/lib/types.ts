@@ -1,3 +1,4 @@
+
 export interface Assignment {
   id: string;
   clientName: string;
@@ -24,7 +25,17 @@ export interface Category {
   name: string;
   hourlyRate: number;
   minuteRate: number;
-  travelCost: number; // Neue Eigenschaft für Fahrtkosten
+  travelCost: number; // Eigenschaft für Fahrtkosten
+}
+
+// Define the Interpreter interface that was missing
+export interface Interpreter {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  languages: string[];
+  assignmentCount: number;
 }
 
 // Initial data for locations - with example data
@@ -378,5 +389,25 @@ initialAssignments.forEach(assignment => {
   }
 });
 
-// Update
+// Add the missing utility functions
+// Calculate duration in minutes between start and end time
+export const calculateDuration = (assignment: Assignment): number => {
+  const durationMs = assignment.endTime.getTime() - assignment.startTime.getTime();
+  return Math.floor(durationMs / (1000 * 60)); // Convert to minutes
+};
 
+// Calculate earnings for an assignment
+export const calculateEarnings = (assignment: Assignment): number => {
+  const durationMinutes = calculateDuration(assignment);
+  return parseFloat((durationMinutes * assignment.category.minuteRate).toFixed(2));
+};
+
+// Format date to locale string
+export const formatDate = (date: Date): string => {
+  return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
+
+// Format time to locale string
+export const formatTime = (date: Date): string => {
+  return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+};
