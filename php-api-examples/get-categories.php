@@ -12,7 +12,8 @@ try {
             'id' => $category['id'],
             'name' => $category['name'],
             'hourlyRate' => (float)$category['hourly_rate'],
-            'minuteRate' => (float)$category['minute_rate']
+            'minuteRate' => (float)$category['minute_rate'],
+            'travelCost' => (float)($category['travel_cost'] ?? 0) // Add travel cost
         ];
     }, $categories);
     

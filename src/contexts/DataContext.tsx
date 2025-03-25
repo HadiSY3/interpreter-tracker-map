@@ -35,6 +35,10 @@ interface DataContextType {
   isLoading: boolean;
   syncWithDatabase: () => Promise<boolean>;
   updateAssignmentPaidStatus: (assignmentId: string, paid: boolean) => Promise<void>;
+  saveAssignment: (assignment: Assignment) => Promise<boolean>;
+  saveCategory: (category: Category) => Promise<boolean>;
+  saveInterpreter: (interpreter: Interpreter) => Promise<boolean>;
+  saveLocation: (location: Location) => Promise<boolean>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -105,6 +109,103 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return false;
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Save assignment to database and update local state
+  const saveAssignment = async (assignment: Assignment): Promise<boolean> => {
+    try {
+      const success = await saveAssignmentToDB(assignment);
+      
+      if (success) {
+        // Update local state
+        setAssignments(prev => {
+          const index = prev.findIndex(a => a.id === assignment.id);
+          if (index >= 0) {
+            return [...prev.slice(0, index), assignment, ...prev.slice(index + 1)];
+          } else {
+            return [...prev, assignment];
+          }
+        });
+        
+        toast({
+          title: "Einsatz gespeichert",
+          description: "Der Einsatz wurde erfolgreich in der Datenbank gespeichert."
+        });
+        
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error("Error saving assignment:", error);
+      toast({
+        title: "Fehler beim Speichern",
+        description: `Der Einsatz konnte nicht gespeichert werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
+  // Todo: Implement these save methods to sync with database
+  const saveCategory = async (category: Category): Promise<boolean> => {
+    // TODO: Implement saving category to database
+    try {
+      // For now, just update the local state
+      setCategories(prev => {
+        const index = prev.findIndex(c => c.id === category.id);
+        if (index >= 0) {
+          return [...prev.slice(0, index), category, ...prev.slice(index + 1)];
+        } else {
+          return [...prev, category];
+        }
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("Error saving category:", error);
+      return false;
+    }
+  };
+
+  const saveInterpreter = async (interpreter: Interpreter): Promise<boolean> => {
+    // TODO: Implement saving interpreter to database
+    try {
+      // For now, just update the local state
+      setInterpreters(prev => {
+        const index = prev.findIndex(i => i.id === interpreter.id);
+        if (index >= 0) {
+          return [...prev.slice(0, index), interpreter, ...prev.slice(index + 1)];
+        } else {
+          return [...prev, interpreter];
+        }
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("Error saving interpreter:", error);
+      return false;
+    }
+  };
+
+  const saveLocation = async (location: Location): Promise<boolean> => {
+    // TODO: Implement saving location to database
+    try {
+      // For now, just update the local state
+      setLocations(prev => {
+        const index = prev.findIndex(l => l.id === location.id);
+        if (index >= 0) {
+          return [...prev.slice(0, index), location, ...prev.slice(index + 1)];
+        } else {
+          return [...prev, location];
+        }
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("Error saving location:", error);
+      return false;
     }
   };
 
@@ -190,7 +291,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       deleteLocation,
       isLoading,
       syncWithDatabase,
-      updateAssignmentPaidStatus
+      updateAssignmentPaidStatus,
+      saveAssignment,
+      saveCategory,
+      saveInterpreter,
+      saveLocation
     }}>
       {children}
     </DataContext.Provider>

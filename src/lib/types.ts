@@ -24,16 +24,7 @@ export interface Category {
   name: string;
   hourlyRate: number;
   minuteRate: number;
-}
-
-// Neuer Typ für Dolmetscher
-export interface Interpreter {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  languages?: string[];
-  assignmentCount?: number;
+  travelCost: number; // Neue Eigenschaft für Fahrtkosten
 }
 
 // Initial data for locations - with example data
@@ -68,31 +59,35 @@ export const initialLocations: Location[] = [
   }
 ];
 
-// Initial data for categories - with example data
+// Initial data for categories - with example data and added travel costs
 export const initialCategories: Category[] = [
   {
     id: "cat-1",
     name: "Gericht",
     hourlyRate: 85,
-    minuteRate: 1.417
+    minuteRate: 1.417,
+    travelCost: 0.30 // €/km
   },
   {
     id: "cat-2",
     name: "Polizei",
     hourlyRate: 70,
-    minuteRate: 1.167
+    minuteRate: 1.167,
+    travelCost: 0.25 // €/km
   },
   {
     id: "cat-3",
     name: "Behörde",
     hourlyRate: 65,
-    minuteRate: 1.083
+    minuteRate: 1.083,
+    travelCost: 0.25 // €/km
   },
   {
     id: "cat-4",
     name: "Medizinisch",
     hourlyRate: 90,
-    minuteRate: 1.5
+    minuteRate: 1.5,
+    travelCost: 0.35 // €/km
   }
 ];
 
@@ -383,32 +378,5 @@ initialAssignments.forEach(assignment => {
   }
 });
 
-// Calculate earnings from an assignment
-export const calculateEarnings = (assignment: Assignment): number => {
-  const durationMs = assignment.endTime.getTime() - assignment.startTime.getTime();
-  const durationMinutes = durationMs / (1000 * 60);
-  return parseFloat((durationMinutes * assignment.category.minuteRate).toFixed(2));
-};
+// Update
 
-// Calculate total duration in minutes
-export const calculateDuration = (assignment: Assignment): number => {
-  const durationMs = assignment.endTime.getTime() - assignment.startTime.getTime();
-  return Math.round(durationMs / (1000 * 60));
-};
-
-// Format date to human-readable format
-export const formatDate = (date: Date): string => {
-  return date.toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  });
-};
-
-// Format time to human-readable format
-export const formatTime = (date: Date): string => {
-  return date.toLocaleTimeString('de-DE', {
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};

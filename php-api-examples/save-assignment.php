@@ -36,7 +36,8 @@ try {
                 notes = ?,
                 interpreter_id = ?,
                 language = ?,
-                paid = ?
+                paid = ?,
+                travel_distance = ?
             WHERE id = ?
         ");
 
@@ -50,6 +51,7 @@ try {
             $data['interpreter']['id'] ?? null,
             $data['language'] ?? null,
             $data['paid'] ? 1 : 0,
+            $data['travelDistance'] ?? 0,
             $data['id']
         ]);
     } else {
@@ -57,8 +59,8 @@ try {
         $stmt = $pdo->prepare("
             INSERT INTO assignments (
                 id, client_name, location_id, category_id, start_time, end_time, 
-                notes, interpreter_id, language, paid
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                notes, interpreter_id, language, paid, travel_distance
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -71,7 +73,8 @@ try {
             $data['notes'] ?? null,
             $data['interpreter']['id'] ?? null,
             $data['language'] ?? null,
-            $data['paid'] ? 1 : 0
+            $data['paid'] ? 1 : 0,
+            $data['travelDistance'] ?? 0
         ]);
     }
 

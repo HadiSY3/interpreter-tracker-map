@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { 
   PlusCircle, Edit, Trash2, Tag, DollarSign, 
-  Clock, Check, X, AlertCircle
+  Clock, Car, Check, X, AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,6 +54,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
     name: '',
     hourlyRate: 0,
     minuteRate: 0,
+    travelCost: 0
   });
   const [editCategory, setEditCategory] = useState<Category | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -77,6 +78,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
       name: newCategory.name,
       hourlyRate: newCategory.hourlyRate,
       minuteRate: minuteRate,
+      travelCost: newCategory.travelCost || 0,
     };
 
     if (onCategoryAdd) {
@@ -87,6 +89,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
       name: '',
       hourlyRate: 0,
       minuteRate: 0,
+      travelCost: 0
     });
     
     setIsAddDialogOpen(false);
@@ -205,6 +208,25 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
                     <DollarSign className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
                   </div>
                 </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="travelCost">Fahrtkosten (€ pro km)</Label>
+                  <div className="relative">
+                    <Input
+                      id="travelCost"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="z.B. 0.30"
+                      className="pl-10"
+                      value={newCategory.travelCost || ''}
+                      onChange={(e) => setNewCategory({ 
+                        ...newCategory, 
+                        travelCost: parseFloat(e.target.value) || 0
+                      })}
+                    />
+                    <Car className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+                  </div>
+                </div>
                 <div className="text-sm text-muted-foreground border-t border-border/50 pt-3 mt-2">
                   <div className="flex justify-between items-center">
                     <span>Minutensatz:</span>
@@ -248,12 +270,21 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
             >
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{category.name}</p>
-                <div className="flex items-center mt-1 text-sm text-muted-foreground">
-                  <DollarSign className="h-4 w-4 mr-1" />
-                  <span>€{category.hourlyRate.toFixed(2)}/h</span>
-                  <span className="mx-2">|</span>
-                  <Clock className="h-4 w-4 mr-1" />
-                  <span>€{category.minuteRate.toFixed(2)}/min</span>
+                <div className="flex flex-wrap items-center mt-1 text-sm text-muted-foreground gap-2">
+                  <div className="flex items-center">
+                    <DollarSign className="h-4 w-4 mr-1" />
+                    <span>€{category.hourlyRate.toFixed(2)}/h</span>
+                  </div>
+                  <span className="mx-1">|</span>
+                  <div className="flex items-center">
+                    <Clock className="h-4 w-4 mr-1" />
+                    <span>€{category.minuteRate.toFixed(2)}/min</span>
+                  </div>
+                  <span className="mx-1">|</span>
+                  <div className="flex items-center">
+                    <Car className="h-4 w-4 mr-1" />
+                    <span>€{category.travelCost.toFixed(2)}/km</span>
+                  </div>
                 </div>
               </div>
               <div className="flex space-x-2 ml-4">
@@ -343,6 +374,24 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({
                     })}
                   />
                   <DollarSign className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-travel-cost">Fahrtkosten (€ pro km)</Label>
+                <div className="relative">
+                  <Input
+                    id="edit-travel-cost"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="pl-10"
+                    value={editCategory.travelCost || ''}
+                    onChange={(e) => setEditCategory({ 
+                      ...editCategory, 
+                      travelCost: parseFloat(e.target.value) || 0
+                    })}
+                  />
+                  <Car className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
                 </div>
               </div>
               <div className="text-sm text-muted-foreground border-t border-border/50 pt-3 mt-2">

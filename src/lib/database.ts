@@ -1,3 +1,4 @@
+
 import { Assignment, Category, Location, Interpreter } from './types';
 import { toast } from '@/components/ui/use-toast';
 
@@ -14,25 +15,42 @@ const DB_CONFIG = {
 // Helper function to build API URLs
 const buildApiUrl = (endpoint: string): string => {
   // For local development on the same machine
-  // Passe die URL entsprechend an, wenn deine PHP API in XAMPP läuft
-  return `http://localhost/interpreter-api/${endpoint}.php`;
-  
-  // If you're hosting the API on a different machine on your network, use its IP:
-  // return `http://192.168.1.x/interpreter-api/${endpoint}.php`;
+  // Die URL wurde angepasst für XAMPP-Deployment
+  return `${window.location.protocol}//${window.location.hostname}/interpreter-api/${endpoint}.php`;
 };
 
 // Debug function to test API connection
 export const testApiConnection = async (): Promise<boolean> => {
   try {
-    console.log("Testing API connection to:", buildApiUrl('get-categories'));
-    const response = await fetch(buildApiUrl('get-categories'), {
+    const apiUrl = buildApiUrl('get-categories');
+    console.log("Testing API connection to:", apiUrl);
+    
+    const response = await fetch(apiUrl, {
       method: 'GET',
       // Add a timeout to fail fast in case of connection issues
-      signal: AbortSignal.timeout(5000)
+      signal: AbortSignal.timeout(5000),
+      // Disable caching for test requests
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
     });
     
     console.log("API response status:", response.status);
-    return response.ok;
+    
+    if (response.ok) {
+      try {
+        const data = await response.json();
+        console.log("API connection successful, received data:", data);
+        return true;
+      } catch (jsonError) {
+        console.error("API returned invalid JSON:", jsonError);
+        return false;
+      }
+    }
+    
+    return false;
   } catch (error) {
     console.error("API connection test failed:", error);
     return false;
@@ -42,20 +60,43 @@ export const testApiConnection = async (): Promise<boolean> => {
 // Generic function to handle fetch errors
 const handleFetchError = (error: any, actionName: string) => {
   console.error(`Error ${actionName}:`, error);
+  
+  // Provide more detailed error information
+  let errorDetails = '';
+  if (error instanceof TypeError && error.message === 'Failed to fetch') {
+    errorDetails = 'Netzwerkfehler: Stellen Sie sicher, dass XAMPP läuft und die PHP-API erreichbar ist.';
+  } else if (error instanceof Error) {
+    errorDetails = error.message;
+  }
+  
+  toast({
+    title: `Fehler beim ${actionName}`,
+    description: errorDetails || 'Ein unbekannter Fehler ist aufgetreten.',
+    variant: "destructive"
+  });
+  
   return null;
 };
 
 // Assignments API functions
 export const fetchAssignmentsFromDB = async (): Promise<Assignment[] | null> => {
   try {
-    console.log("Fetching assignments from:", buildApiUrl('get-assignments'));
-    const response = await fetch(buildApiUrl('get-assignments'));
+    const apiUrl = buildApiUrl('get-assignments');
+    console.log("Fetching assignments from:", apiUrl);
+    
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
     
     if (!response.ok) {
       console.error(`Server responded with status: ${response.status}`);
       const errorText = await response.text();
       console.error("Error details:", errorText);
-      throw new Error(`Server responded with status: ${response.status}`);
+      throw new Error(`Server responded with status: ${response.status} - ${errorText}`);
     }
     
     const data = await response.json();
@@ -88,7 +129,7 @@ export const saveAssignmentToDB = async (assignment: Assignment): Promise<boolea
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Error details:", errorText);
-      throw new Error(`Server responded with status: ${response.status}`);
+      throw new Error(`Server responded with status: ${response.status} - ${errorText}`);
     }
     
     const result = await response.json();
@@ -110,7 +151,10 @@ export const updateAssignmentPaymentStatus = async (assignmentId: string, paid: 
       body: JSON.stringify({ id: assignmentId, paid }),
     });
     
-    if (!response.ok) throw new Error(`Server responded with status: ${response.status}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Server responded with status: ${response.status} - ${errorText}`);
+    }
     return true;
   } catch (error) {
     handleFetchError(error, 'Aktualisieren des Zahlungsstatus');
@@ -121,14 +165,22 @@ export const updateAssignmentPaymentStatus = async (assignmentId: string, paid: 
 // Similar functions for categories, locations, and interpreters
 export const fetchCategoriesFromDB = async (): Promise<Category[] | null> => {
   try {
-    console.log("Fetching categories from:", buildApiUrl('get-categories'));
-    const response = await fetch(buildApiUrl('get-categories'));
+    const apiUrl = buildApiUrl('get-categories');
+    console.log("Fetching categories from:", apiUrl);
+    
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
     
     if (!response.ok) {
       console.error(`Server responded with status: ${response.status}`);
       const errorText = await response.text();
       console.error("Error details:", errorText);
-      throw new Error(`Server responded with status: ${response.status}`);
+      throw new Error(`Server responded with status: ${response.status} - ${errorText}`);
     }
     
     const data = await response.json();
@@ -141,14 +193,22 @@ export const fetchCategoriesFromDB = async (): Promise<Category[] | null> => {
 
 export const fetchLocationsFromDB = async (): Promise<Location[] | null> => {
   try {
-    console.log("Fetching locations from:", buildApiUrl('get-locations'));
-    const response = await fetch(buildApiUrl('get-locations'));
+    const apiUrl = buildApiUrl('get-locations');
+    console.log("Fetching locations from:", apiUrl);
+    
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
     
     if (!response.ok) {
       console.error(`Server responded with status: ${response.status}`);
       const errorText = await response.text();
       console.error("Error details:", errorText);
-      throw new Error(`Server responded with status: ${response.status}`);
+      throw new Error(`Server responded with status: ${response.status} - ${errorText}`);
     }
     
     const data = await response.json();
@@ -161,14 +221,22 @@ export const fetchLocationsFromDB = async (): Promise<Location[] | null> => {
 
 export const fetchInterpretersFromDB = async (): Promise<Interpreter[] | null> => {
   try {
-    console.log("Fetching interpreters from:", buildApiUrl('get-interpreters'));
-    const response = await fetch(buildApiUrl('get-interpreters'));
+    const apiUrl = buildApiUrl('get-interpreters');
+    console.log("Fetching interpreters from:", apiUrl);
+    
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
     
     if (!response.ok) {
       console.error(`Server responded with status: ${response.status}`);
       const errorText = await response.text();
       console.error("Error details:", errorText);
-      throw new Error(`Server responded with status: ${response.status}`);
+      throw new Error(`Server responded with status: ${response.status} - ${errorText}`);
     }
     
     const data = await response.json();

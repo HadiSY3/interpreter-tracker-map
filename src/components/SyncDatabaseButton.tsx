@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Server, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Server, AlertTriangle, Database } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
 import { toast } from '@/components/ui/use-toast';
 import { testApiConnection } from '@/lib/database';
@@ -26,7 +26,7 @@ const SyncDatabaseButton: React.FC<SyncDatabaseButtonProps> = ({ className }) =>
         console.error("API connection test failed");
         toast({
           title: "Verbindung fehlgeschlagen",
-          description: "Verbindung zur API konnte nicht hergestellt werden. Überprüfen Sie XAMPP und die API-Pfade in database.ts.",
+          description: "Verbindung zur API konnte nicht hergestellt werden. Überprüfen Sie XAMPP und die API-Pfade in database.ts sowie die Datenbank-Konfiguration.",
           variant: "destructive"
         });
         return;
@@ -49,12 +49,14 @@ const SyncDatabaseButton: React.FC<SyncDatabaseButtonProps> = ({ className }) =>
       }
     } catch (error) {
       setIsTestingConnection(false);
+      const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
+      console.error("Synchronisierungsfehler:", error);
+      
       toast({
         title: "Synchronisierungsfehler",
-        description: `Fehler bei der Synchronisierung: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
+        description: `Fehler bei der Synchronisierung: ${errorMessage}`,
         variant: "destructive"
       });
-      console.error("Synchronisierungsfehler:", error);
     }
   };
 
@@ -78,7 +80,7 @@ const SyncDatabaseButton: React.FC<SyncDatabaseButtonProps> = ({ className }) =>
         </>
       ) : (
         <>
-          <RefreshCw className="h-4 w-4 mr-2" />
+          <Database className="h-4 w-4 mr-2" />
           Mit Datenbank synchronisieren
         </>
       )}
